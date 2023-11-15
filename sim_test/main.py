@@ -189,7 +189,7 @@ if __name__ == '__main__':
     # solar_df = generate_solar_power_df()
     # print(solar_df[['Time', 'Simulated_Solar_Power']])
 
-    # plot_solar_power('gen.txt')
+    plot_solar_power('gen.txt')
 
     # time_input = '08:00:00' 
     # random_consumption = generate_random_power_consumption(df, time_input)
