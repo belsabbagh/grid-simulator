@@ -11,6 +11,7 @@ class Meter:
         self.consumption = 0
         self.generated = 0
         self.taken = 0
+        self.given = 0
         self.status = "none"
         self.log = {}
         self.curr_epoch = 0
@@ -22,7 +23,7 @@ class Meter:
         self.generated = data["generated"]
 
     def detect_power_consumption(self):
-        difference = self.consumption - (self.generated + self.taken)
+        difference = (self.consumption + self.given) - (self.generated + self.taken)
         if difference > 0:
             print(f"House {self.meter_id} needs power")
             data = {"meter_id": self.meter_id, "power": difference}
@@ -36,23 +37,26 @@ class Meter:
             self.status = "excess"
 
     def wait_for_power(self):
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind(("localhost", self.port))
-        while True:
-            server_socket.listen()
-            conn, addr = server_socket.accept()
-            data = conn.recv(1024)
-            data = eval(data.decode("utf-8"))
-            if not data:
-                break
-            type = data["type"]
-            if type == "power":
-                if self.status != "deficit":
-                    return
-                amount = data["amount"]
-                meter_id = data["meter_id"]
-                print(f"Meter: {meter_id} sent {amount} power")
-                self.taken += amount
+        try:
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.bind(("localhost", self.port))
+            while True:
+                server_socket.listen()
+                conn, addr = server_socket.accept()
+                data = conn.recv(1024)
+                data = eval(data.decode("utf-8"))
+                if not data:
+                    break
+                type = data["type"]
+                if type == "power":
+                    if self.status != "deficit":
+                        return
+                    amount = data["amount"]
+                    meter_id = data["meter_id"]
+                    print(f"Meter: {meter_id} sent {amount} power")
+                    self.taken += amount
+        except:
+            pass
 
     def give_power(self, amount, ip, port):
         if self.status == "excess":
@@ -63,39 +67,44 @@ class Meter:
             socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             socket.connect((ip, port))
             socket.sendall(bytes(str(data), "utf-8"))
+            self.given += amount
 
     def clear_for_next_epoch(self):
         self.taken = 0
         self.generated = 0
         self.consumption = 0
+        self.given = 0
         self.status = "none"
         self.curr_actions = []
 
 
     def listen(self):
         while True:
-            curr_action = "none"
-            data = self.socket.recv(1024)
-            data = eval(data.decode("utf-8"))
-            if data["epoch"]: 
-                if data["epoch"] != self.curr_epoch:
-                    self.clear_for_next_epoch()
-                    self.curr_epoch = data["epoch"]
-            elif data["type"] == "give_power":
-                self.give_power(data["amount"], data["meter_id"], data["ip"], data["port"])
-                curr_action = "give_power"
-            elif data["type"] == "update":
-                self.update_metrics(data)
-                curr_action = "update"
-            
-            self.detect_power_consumption()
-            self.curr_log = {"meter_id": self.meter_id, "consumption": self.consumption, "generated": self.generated, "taken": self.taken, "actions": self.curr_actions}
-            self.curr_actions.append(curr_action)
-            if self.curr_epoch in self.log:
-                self.curr_log["actions"] = self.log[self.curr_epoch]["actions"] + self.curr_log["actions"]
-                self.log[self.curr_epoch] = self.curr_log
-            else:
-                self.log[self.curr_epoch] = self.curr_log
+            try:
+                curr_action = "none"
+                data = self.socket.recv(1024)
+                data = eval(data.decode("utf-8"))
+                if data["epoch"]: 
+                    if data["epoch"] != self.curr_epoch:
+                        self.clear_for_next_epoch()
+                        self.curr_epoch = data["epoch"]
+                elif data["type"] == "give_power":
+                    self.give_power(data["amount"], data["meter_id"], data["ip"], data["port"])
+                    curr_action = "give_power"
+                elif data["type"] == "update":
+                    self.update_metrics(data)
+                    curr_action = "update"
+                
+                self.detect_power_consumption()
+                self.curr_log = {"meter_id": self.meter_id, "consumption": self.consumption, "generated": self.generated, "taken": self.taken, "actions": self.curr_actions}
+                self.curr_actions.append(curr_action)
+                if self.curr_epoch in self.log:
+                    self.curr_log["actions"] = self.log[self.curr_epoch]["actions"] + self.curr_log["actions"]
+                    self.log[self.curr_epoch] = self.curr_log
+                else:
+                    self.log[self.curr_epoch] = self.curr_log
+            except:
+                continue
 
             
 
