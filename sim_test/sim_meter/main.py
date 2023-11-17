@@ -84,6 +84,12 @@ class Meter:
                 curr_action = "none"
                 data = self.socket.recv(1024)
                 data = eval(data.decode("utf-8"))
+
+                if not data:
+                    break
+
+                print(f"Meter {self.meter_id} received data: {data}")
+
                 if data["epoch"]: 
                     if data["epoch"] != self.curr_epoch:
                         self.clear_for_next_epoch()
@@ -94,6 +100,9 @@ class Meter:
                 elif data["type"] == "update":
                     self.update_metrics(data)
                     curr_action = "update"
+
+                print(f"Meter {self.meter_id}: Consumption: {self.consumption}, Generated: {self.generated}, Taken: {self.taken}")
+                print(f"Meter {self.meter_id}: Current Actions: {self.curr_actions}")
                 
                 self.detect_power_consumption()
                 self.curr_log = {"meter_id": self.meter_id, "consumption": self.consumption, "generated": self.generated, "taken": self.taken, "actions": self.curr_actions}
