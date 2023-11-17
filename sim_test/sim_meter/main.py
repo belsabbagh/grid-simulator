@@ -23,6 +23,7 @@ class Meter:
         self.generated = data["generated"]
 
     def detect_power_consumption(self):
+        print("Detecting power consumption")
         difference = (self.consumption + self.given) - (self.generated + self.taken)
         if difference > 0:
             print(f"House {self.meter_id} needs power")
@@ -115,22 +116,28 @@ class Meter:
             except:
                 continue
 
-            
-
     def start(self):
         thread = threading.Thread(target=self.listen)
         thread2 = threading.Thread(target=self.wait_for_power)
         thread.start()
         thread2.start()
+        return thread, thread2
 
 
 if __name__ == "__main__":
     meter_list = []
+    threads = []
+
     num_meters = 10
     for i in range(num_meters):
         meter = Meter(i)
         meter_list.append(meter)
-        meter.start()
+        thread1, thread2 = meter.start()
+        threads.extend([thread1, thread2])
+
     print(f"Started {num_meters} meters")
-    while True:
-        pass
+
+    for thread in threads:
+        thread.join()
+
+    print("All threads joined. Exiting.")
