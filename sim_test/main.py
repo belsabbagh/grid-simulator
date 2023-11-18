@@ -132,7 +132,7 @@ def plot_solar_power(file):
     plt.tight_layout()
     plt.show()
 
-def generate_random_power_consumption(df, T, range_min=-1, range_max=1):
+def generate_random_power_consumption(df, T, range_min=0, range_max=2):
     # Convert 'Time' column to datetime for comparison
     df['Time'] = pd.to_datetime(df['Time'], format='%H:%M:%S')
 
@@ -168,13 +168,16 @@ def generate_random_power_generated(T, df, deviation_range=(0, 0.1)):
 
     # Find the corresponding row in the DataFrame
     row = df[df['Time'] == current_time]
+    print(row)
 
     # If the row is found, get the simulated solar power value and add random deviation
     if not row.empty:
         simulated_power = row['Simulated_Solar_Power'].values[0]
         random_deviation = np.random.uniform(deviation_range[0], deviation_range[1])
+        print((simulated_power + (simulated_power * random_deviation)) * 10)
         return (simulated_power + (simulated_power * random_deviation)) * 10 # 10 solar panels per household
     else:
+        print("ROW VERY EMPTY")
         return 0  # If row is not found, return zero
 
 def send_random_values_to_meters(meter_socket, df, df2, current_time_str):
@@ -188,6 +191,7 @@ def send_random_values_to_meters(meter_socket, df, df2, current_time_str):
     # Send the data to the meter
     print(f"Sending data to meter: {data}")
     meter_socket.sendall(bytes(str(data), "utf-8"))
+    meter_update_ui.append({"consumption": random_consumption, "generation": random_generated})
 
 
 def handle_meter_connection(meter_socket):
@@ -265,7 +269,7 @@ if __name__ == '__main__':
     households_sockets = []
 
     # Set the initial global time
-    global_time = datetime.strptime("00:00:00", "%H:%M:%S")
+    global_time = datetime.strptime("12:00:00", "%H:%M:%S")
 
     # Define the time increment in seconds
     time_increment = 1
@@ -278,16 +282,28 @@ if __name__ == '__main__':
 
     # Simulate the passage of time
     for _ in range(0, simulation_duration, time_increment):
+        meter_update_ui = []
+        print(f"Current time: {global_time.strftime('%H:%M:%S')}")
+        print(generate_random_power_generated("12:00:15", df2))
         print("Entering the loop...")
         # Get the current time in string format
         current_time_str = global_time.strftime("%H:%M:%S")
 
         for meter_socket in connected_meter_sockets.copy():
             send_random_values_to_meters(meter_socket, df, df2, current_time_str)
+        ui_msg = {
+            "type": "update",
+            "time": current_time_str,
+            "meter_update": meter_update_ui
+        }
 
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.connect(('localhost', 1234))
+        server.send(bytes(str(ui_msg), 'utf-8'))
+        server.close()
 
         # Increment the global time
-        global_time += timedelta(seconds=time_increment)
+        global_time += timedelta(minutes=1)
 
         # Pause for 2 seconds (simulating real-time passage)
         time.sleep(time_increment)
