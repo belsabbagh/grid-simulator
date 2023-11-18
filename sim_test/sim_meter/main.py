@@ -1,7 +1,7 @@
-import threading 
-import socket 
+import threading
+import socket
 
-class Meter: 
+class Meter:
     def __init__(self, meter_id):
         self.meter_id = meter_id
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -17,8 +17,8 @@ class Meter:
         self.curr_epoch = 0
         self.curr_log = {}
         self.curr_actions = []
-    
-    def update_metrics(self, data): 
+
+    def update_metrics(self, data):
         self.consumption = data["consumption"]
         self.generated = data["generated"]
 
@@ -32,10 +32,10 @@ class Meter:
             self.status = "deficit"
 
         elif difference < 0:
-            print(f"House {self.meter_id} has excess power")
+            print(f"House {self.meter_id} has surplus power")
             data = {"meter_id": self.meter_id, "power": difference}
             self.socket.sendall(bytes(str(data), "utf-8"))
-            self.status = "excess"
+            self.status = "surplus"
 
     def wait_for_power(self):
         try:
@@ -60,7 +60,7 @@ class Meter:
             pass
 
     def give_power(self, amount, ip, port):
-        if self.status == "excess":
+        if self.status == "surplus":
             if amount > self.generated - self.consumption:
                 print(f"Meter {self.meter_id} has {self.generated - self.consumption} power")
                 amount = self.generated - self.consumption
@@ -91,7 +91,7 @@ class Meter:
 
                 print(f"Meter {self.meter_id} received data: {data}")
 
-                if data["epoch"]: 
+                if data["epoch"]:
                     if data["epoch"] != self.curr_epoch:
                         self.clear_for_next_epoch()
                         self.curr_epoch = data["epoch"]
@@ -104,7 +104,7 @@ class Meter:
 
                 print(f"Meter {self.meter_id}: Consumption: {self.consumption}, Generated: {self.generated}, Taken: {self.taken}")
                 print(f"Meter {self.meter_id}: Current Actions: {self.curr_actions}")
-                
+
                 self.detect_power_consumption()
                 self.curr_log = {"meter_id": self.meter_id, "consumption": self.consumption, "generated": self.generated, "taken": self.taken, "actions": self.curr_actions}
                 self.curr_actions.append(curr_action)
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     meter_list = []
     threads = []
 
-    num_meters = 10
+    num_meters = 12
     for i in range(num_meters):
         meter = Meter(i)
         meter_list.append(meter)
@@ -141,3 +141,4 @@ if __name__ == "__main__":
         thread.join()
 
     print("All threads joined. Exiting.")
+

@@ -18,7 +18,7 @@ def average_by_time(input_file_path, output_file_path):
     dtype_dict = {'Date': str, 'Time': str, 'Global_active_power': float, 'Global_reactive_power': float,
                   'Voltage': float, 'Global_intensity': float, 'Sub_metering_1': float,
                   'Sub_metering_2': float, 'Sub_metering_3': float}
-    
+
     # Specify non-numeric values to be treated as NaN
     na_values = ['?']
 
@@ -102,7 +102,7 @@ def plot_usage(df):
     plt.gca().xaxis.set_major_locator(HourLocator())
     plt.gca().xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
 
-    plt.xticks(rotation=45, ha='right')  
+    plt.xticks(rotation=45, ha='right')
     plt.grid(True)
     plt.tight_layout()
     plt.show()
@@ -173,10 +173,10 @@ def generate_random_power_generated(T, df, deviation_range=(0, 0.1)):
     if not row.empty:
         simulated_power = row['Simulated_Solar_Power'].values[0]
         random_deviation = np.random.uniform(deviation_range[0], deviation_range[1])
-        return simulated_power + (simulated_power * random_deviation)
+        return (simulated_power + (simulated_power * random_deviation)) * 10 # 10 solar panels per household
     else:
         return 0  # If row is not found, return zero
-    
+
 def send_random_values_to_meters(meter_socket, df, df2, current_time_str):
     # Generate random consumption and generated values
     random_consumption = generate_random_power_consumption(df, current_time_str)  # Update with your desired time
@@ -248,7 +248,7 @@ if __name__ == '__main__':
 
     # plot_solar_power('gen.txt')
 
-    # time_input = '08:00:00' 
+    # time_input = '08:00:00'
     # random_consumption = generate_random_power_consumption(df, time_input)
     # random_consumption2 = generate_random_power_consumption(df, time_input)
     # print(f"Actual power consumption at {time_input}: {random_consumption:.2f} kW")
@@ -260,7 +260,7 @@ if __name__ == '__main__':
     # result = generate_random_power_generated(T, df)
     # print(f"Simulated power generated at {T}: {result} kWh")
 
-    num_houses = 10
+    num_houses = 12
     households = [{"consumption": 0, "generated": 0} for _ in range(num_houses)]
     households_sockets = []
 
@@ -278,7 +278,7 @@ if __name__ == '__main__':
 
     # Simulate the passage of time
     for _ in range(0, simulation_duration, time_increment):
-        print("Entering the loop...") 
+        print("Entering the loop...")
         # Get the current time in string format
         current_time_str = global_time.strftime("%H:%M:%S")
 
