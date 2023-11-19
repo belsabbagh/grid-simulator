@@ -5,7 +5,11 @@ from matplotlib.dates import DateFormatter, HourLocator
 import random
 from datetime import datetime, timedelta
 import time
+import socket
+import json
+import threading
 
+connected_meter_sockets = []
 
 # takes the dataset "https://www.kaggle.com/datasets/uciml/electric-power-consumption-data-set" that
 # contains the power consumption of a household every minute for 4 years and averages the power consumption
@@ -14,7 +18,7 @@ def average_by_time(input_file_path, output_file_path):
     dtype_dict = {'Date': str, 'Time': str, 'Global_active_power': float, 'Global_reactive_power': float,
                   'Voltage': float, 'Global_intensity': float, 'Sub_metering_1': float,
                   'Sub_metering_2': float, 'Sub_metering_3': float}
-    
+
     # Specify non-numeric values to be treated as NaN
     na_values = ['?']
 
@@ -98,7 +102,7 @@ def plot_usage(df):
     plt.gca().xaxis.set_major_locator(HourLocator())
     plt.gca().xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
 
-    plt.xticks(rotation=45, ha='right')  
+    plt.xticks(rotation=45, ha='right')
     plt.grid(True)
     plt.tight_layout()
     plt.show()
@@ -128,7 +132,7 @@ def plot_solar_power(file):
     plt.tight_layout()
     plt.show()
 
-def generate_random_power_consumption(df, T, range_min=-1, range_max=1):
+def generate_random_power_consumption(df, T, range_min=0, range_max=2):
     # Convert 'Time' column to datetime for comparison
     df['Time'] = pd.to_datetime(df['Time'], format='%H:%M:%S')
 
@@ -164,14 +168,71 @@ def generate_random_power_generated(T, df, deviation_range=(0, 0.1)):
 
     # Find the corresponding row in the DataFrame
     row = df[df['Time'] == current_time]
+    print(row)
 
     # If the row is found, get the simulated solar power value and add random deviation
     if not row.empty:
         simulated_power = row['Simulated_Solar_Power'].values[0]
         random_deviation = np.random.uniform(deviation_range[0], deviation_range[1])
-        return simulated_power + (simulated_power * random_deviation)
+        print((simulated_power + (simulated_power * random_deviation)) * 10)
+        return (simulated_power + (simulated_power * random_deviation)) * 10 # 10 solar panels per household
     else:
+        print("ROW VERY EMPTY")
         return 0  # If row is not found, return zero
+
+def send_random_values_to_meters(meter_socket, df, df2, current_time_str):
+    # Generate random consumption and generated values
+    random_consumption = generate_random_power_consumption(df, current_time_str)  # Update with your desired time
+    random_generated = generate_random_power_generated(current_time_str, df2)  # Update with your desired time
+
+    # Create a dictionary with consumption and generated values
+    data = {"type": "update", "consumption": random_consumption, "generated": random_generated}
+
+    # Send the data to the meter
+    print(f"Sending data to meter: {data}")
+    meter_socket.sendall(bytes(str(data), "utf-8"))
+    meter_update_ui.append({"consumption": random_consumption, "generation": random_generated})
+
+
+def handle_meter_connection(meter_socket):
+    try:
+        # Perform any initialization or handshake with the meter here
+        # ...
+
+        # Generate a random available port for the meter to use
+        init_port = random.randint(1024, 65535)
+
+        # Send the initialization data to the meter
+        init_data = {"init_port": init_port}
+        meter_socket.sendall(bytes(str(init_data), "utf-8"))
+
+        connected_meter_sockets.append(meter_socket)
+
+        while True:
+            # Handle any other communication with the meter if needed
+            # ...
+
+            # Simulate real-time updates by sending new random values
+            time.sleep(60)  # Update with your desired interval
+            send_random_values_to_meters(meter_socket)
+
+    except Exception as e:
+        print(f"Error handling meter connection: {e}")
+    finally:
+        # Remove the socket from the list when the connection is terminated
+        connected_meter_sockets.remove(meter_socket)
+        meter_socket.close()
+
+def wait_for_meters():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind(("localhost", 5000))
+    server_socket.listen()
+
+    while True:
+        meter_socket, addr = server_socket.accept()
+        print(f"Meter connected: {addr}")
+        meter_thread = threading.Thread(target=handle_meter_connection, args=(meter_socket,))
+        meter_thread.start()
 
 
 if __name__ == '__main__':
@@ -191,7 +252,7 @@ if __name__ == '__main__':
 
     # plot_solar_power('gen.txt')
 
-    # time_input = '08:00:00' 
+    # time_input = '08:00:00'
     # random_consumption = generate_random_power_consumption(df, time_input)
     # random_consumption2 = generate_random_power_consumption(df, time_input)
     # print(f"Actual power consumption at {time_input}: {random_consumption:.2f} kW")
@@ -203,12 +264,12 @@ if __name__ == '__main__':
     # result = generate_random_power_generated(T, df)
     # print(f"Simulated power generated at {T}: {result} kWh")
 
-    num_houses = 10
+    num_houses = 12
     households = [{"consumption": 0, "generated": 0} for _ in range(num_houses)]
     households_sockets = []
 
     # Set the initial global time
-    global_time = datetime.strptime("00:00:00", "%H:%M:%S")
+    global_time = datetime.strptime("12:00:00", "%H:%M:%S")
 
     # Define the time increment in seconds
     time_increment = 1
@@ -216,25 +277,33 @@ if __name__ == '__main__':
     # Specify the duration of simulation in seconds (e.g., simulate for 24 hours)
     simulation_duration = 24 * 60 * 60
 
+    meter_listener_thread = threading.Thread(target=wait_for_meters)
+    meter_listener_thread.start()
+
     # Simulate the passage of time
     for _ in range(0, simulation_duration, time_increment):
+        meter_update_ui = []
+        print(f"Current time: {global_time.strftime('%H:%M:%S')}")
+        print(generate_random_power_generated("12:00:15", df2))
+        print("Entering the loop...")
         # Get the current time in string format
         current_time_str = global_time.strftime("%H:%M:%S")
 
-        # Generate random power consumption for each household
-        for i in range(num_houses):
-            households[i]["consumption"] = generate_random_power_consumption(df, current_time_str)
-            households[i]["generated"] = generate_random_power_generated(current_time_str, df2)
-        
-        # Print the current time and power consumption for each household
-        print(f"Time: {current_time_str}")
-        for i in range(num_houses):
-            print(f"House {i + 1} consumption: {households[i]['consumption']:.2f} kW")
-            print(f"House {i + 1} generated: {households[i]['generated']:.2f} kW")
+        for meter_socket in connected_meter_sockets.copy():
+            send_random_values_to_meters(meter_socket, df, df2, current_time_str)
+        ui_msg = {
+            "type": "update",
+            "time": current_time_str,
+            "meter_update": meter_update_ui
+        }
 
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.connect(('localhost', 1234))
+        server.send(bytes(str(ui_msg), 'utf-8'))
+        server.close()
 
         # Increment the global time
-        global_time += timedelta(seconds=time_increment)
+        global_time += timedelta(minutes=1)
 
         # Pause for 2 seconds (simulating real-time passage)
         time.sleep(time_increment)
