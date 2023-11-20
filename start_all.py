@@ -1,4 +1,3 @@
-import msvcrt
 import subprocess
 import time
 
@@ -12,11 +11,3 @@ if __name__ == "__main__":
     time.sleep(SLEEP_TIME)
     meters = subprocess.Popen(["python", "meters.py"])
 
-    # wait for key event esc
-    while True:
-        if msvcrt.kbhit() and msvcrt.getch() == chr(27).encode():
-            main.kill()
-            sim.kill()
-            meters.kill()
-            print("Terminated simulation")
-            break

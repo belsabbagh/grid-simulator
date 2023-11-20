@@ -27,7 +27,7 @@ async def update_data(grid, time):
                     generation = float(msg["meter_update"][i]["generation"])
                     consumption = float(msg["meter_update"][i]["consumption"])
                     difference = generation - consumption
-                    grid.set_text_meter(str(i), str(difference))
+                    grid.set_text_meter(str(i), str(round(difference, 2)))
                     if difference > 0:
                         grid.color_meter(str(i), (0, 255, 0))
                     else:
