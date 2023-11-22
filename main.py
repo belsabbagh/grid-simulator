@@ -5,7 +5,7 @@ import asyncio
 
 meter_ids = [str(i) for i in range(0, 12)]
 app = App(meter_ids)
-
+colors = [(255, 0, 0), (0,255,0)]
 
 async def update_data(grid, time):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -28,10 +28,7 @@ async def update_data(grid, time):
                     consumption = float(msg["meter_update"][i]["consumption"])
                     difference = generation - consumption
                     grid.set_text_meter(str(i), str(round(difference, 2)))
-                    if difference > 0:
-                        grid.color_meter(str(i), (0, 255, 0))
-                    else:
-                        grid.color_meter(str(i), (255, 0, 0))
+                    grid.color_meter(str(i), colors[difference>0])
         if msg["type"] == "trade":
             from_meter = str(msg["from_meter"])
             to_meter = str(msg["to_meter"])
