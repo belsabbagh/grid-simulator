@@ -35,13 +35,14 @@ class MetersGrid(QtW.QWidget):
         super().__init__()
         csize = 600
         self.meter_size = meter_size
-        pos = (0, 0)
-        offset = (pos[0] + csize / 2, pos[1] + csize / 2)
-        r = csize / 2 - meter_size / 2
+
         self.scene = QtW.QGraphicsScene()
         self.canvas = QtW.QGraphicsView(self.scene)
         self.canvas.setScene(self.scene)
         self.meters = {k: Meter(k, meter_size) for k in meter_ids}
+        pos = (0, 0)
+        offset = (pos[0] + csize / 2, pos[1] + csize / 2)
+        r = csize / 2 - meter_size / 2
         for pos, mid in zip(circle_coords(len(meter_ids), r, offset), meter_ids):
             self.canvas.scene().addWidget(self.meters[mid])
             self.meters[mid].move(*[int(i) for i in pos])

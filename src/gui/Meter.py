@@ -2,7 +2,7 @@ from PyQt6 import QtWidgets as QtW
 from PyQt6.QtGui import QPixmap, QImage
 from PIL import Image, ImageQt
 import PyQt6 as Qt
-
+from PyQt6 import QtCore
 
 def color_icon(img: Image, color: tuple) -> Image:
     """Replace solid black pixels with a color"""
@@ -34,6 +34,8 @@ class Meter(QtW.QWidget):
         self.layout.addWidget(self.icon)
         self.setLayout(self.layout)
         self.icon.mousePressEvent = self.on_click
+        self.setObjectName("meter")
+        self.setStyleSheet("#meter {background-color: transparent; border: none;}")
 
     def on_click(self, event):
         print(self.meter_id)
