@@ -93,14 +93,14 @@ class OldMeter:
             pass
 
     def give_power(self, amount, ip, port):
-        socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        socket.connect((ip, port))
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((ip, port))
         if self.status == "surplus":
             if amount > self.generated - self.consumption:
                 print(f"Meter {self.meter_id} has {self.generated - self.consumption} power")
                 amount = self.generated - self.consumption
             data = {"meter_id": self.meter_id, "amount": amount, "type": "power"}
-            socket.sendall(bytes(str(data), "utf-8"))
+            s.sendall(bytes(str(data), "utf-8"))
             self.given += amount
 
     def clear_for_next_epoch(self):

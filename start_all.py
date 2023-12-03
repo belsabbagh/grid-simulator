@@ -46,7 +46,7 @@ def update_logger(textview, p: subprocess.Popen):
             continue
         line = p.stdout.readline()
         if not line:
-            continue
+            textview.log("Nothing to write\n")
         textview.log(line.decode("utf-8"))
 
 if __name__ == "__main__":
