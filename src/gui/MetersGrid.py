@@ -28,8 +28,8 @@ class MetersGrid(QtW.QWidget):
     - `color_meter(meter_id, color)` - color a meter with a color
     - `set_text_meter(meter_id, text)` - set the text of a meter
     """
-    meters = None
-    canvas = None
+    meters: dict[str, Meter]
+    canvas: QtW.QGraphicsView
 
     def __init__(self, meter_ids, meter_size) -> None:
         super().__init__()
