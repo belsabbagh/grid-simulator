@@ -7,11 +7,11 @@ TIME_FORMAT = "%H:%M:%S"
 
 def generate_random(t: datetime.time, df: pd.DataFrame, deviation):
     def sub_time(t1: pd.Timestamp, t2: pd.Timestamp):
-        t1, t2 = t1.time(), t2.time()
-        return datetime.timedelta(hours=t1.hour - t2.hour, minutes=t1.minute - t2.minute, seconds=t1.second - t2.second)
+        a, b = t1.time(), t2.time()
+        return datetime.timedelta(hours=a.hour - b.hour, minutes=a.minute - b.minute, seconds=a.second - b.second)
     # get the closest time from time index
-    t = pd.Timestamp(t.strftime(TIME_FORMAT))
-    closest_time = min(df.index, key=lambda x: abs(sub_time(x,t).total_seconds()))
+    ts = pd.Timestamp(t.strftime(TIME_FORMAT))
+    closest_time = min(df.index, key=lambda x: abs(sub_time(x,ts).total_seconds()))
     # get the value from the closest time
     closest_value = df.loc[closest_time]["value"]
     # generate random value
@@ -22,7 +22,7 @@ def generate_random(t: datetime.time, df: pd.DataFrame, deviation):
 
 def make_instance_generator(d):
     def instance_generator(t: datetime.datetime):
-        return max(0, generate_random(t, gen, d)), generate_random(t, con, d)
+        return max(0, generate_random(t.time(), gen, d)), generate_random(t.time(), con, d)
 
     gen = pd.read_csv("data/gen.txt", sep=";")
     gen = gen.set_index("Time")

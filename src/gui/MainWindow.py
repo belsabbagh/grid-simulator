@@ -4,8 +4,8 @@ from .MetersGrid import MetersGrid
 
 
 class MainWindow(QtW.QMainWindow):
-    grid = None
-    timer = None
+    grid: MetersGrid
+    timer: QtW.QLabel
 
     def __init__(self, meter_ids):
         super().__init__()
