@@ -1,13 +1,46 @@
+import pickle
 import threading
 import socket
 
+
 class Meter:
+    s: socket.socket
+    
+    def __init__(self, socket, server_address, buffer_size):
+        self.s = socket
+        self.s.connect(server_address)
+        self.buffer_size = buffer_size
+        
+    def create_thread(self, args=None):
+        if args is None:
+            args = ()
+        return threading.Thread(target=self.start, args=args)
+        
+    def start(self):
+        data = self.s.recv(self.buffer_size)
+        if not data:
+            return
+        data = pickle.loads(data)
+        data_type = data["type"]
+        match data_type:
+            case "power":
+                self._handle_power(data)
+            case _:
+                print("Invalid message type")
+                
+    def _handle_power(self, data):
+        gen, con = data['generation'], data['consumption']
+        surplus = gen - con
+        self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "surplus": surplus}))
+
+
+class OldMeter:
     def __init__(self, meter_id):
         self.meter_id = meter_id
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect(("localhost", 5000))
-        self.socket.sendall(bytes(str(self.meter_id), "utf-8"))
-        self.port = eval(self.socket.recv(1024).decode("utf-8"))["init_port"]
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.connect(("localhost", 5000))
+        self.s.sendall(bytes(str(self.meter_id), "utf-8"))
+        self.port = eval(self.s.recv(1024).decode("utf-8"))["init_port"]
         self.consumption = 0
         self.generated = 0
         self.taken = 0
@@ -28,13 +61,13 @@ class Meter:
         if difference > 0:
             print(f"House {self.meter_id} needs power")
             data = {"meter_id": self.meter_id, "power": difference}
-            self.socket.sendall(bytes(str(data), "utf-8"))
+            self.s.sendall(bytes(str(data), "utf-8"))
             self.status = "deficit"
 
         elif difference < 0:
             print(f"House {self.meter_id} has surplus power")
             data = {"meter_id": self.meter_id, "power": difference}
-            self.socket.sendall(bytes(str(data), "utf-8"))
+            self.s.sendall(bytes(str(data), "utf-8"))
             self.status = "surplus"
 
     def wait_for_power(self):
@@ -60,13 +93,13 @@ class Meter:
             pass
 
     def give_power(self, amount, ip, port):
+        socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket.connect((ip, port))
         if self.status == "surplus":
             if amount > self.generated - self.consumption:
                 print(f"Meter {self.meter_id} has {self.generated - self.consumption} power")
                 amount = self.generated - self.consumption
             data = {"meter_id": self.meter_id, "amount": amount, "type": "power"}
-            socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            socket.connect((ip, port))
             socket.sendall(bytes(str(data), "utf-8"))
             self.given += amount
 
@@ -83,7 +116,7 @@ class Meter:
         while True:
             try:
                 curr_action = "none"
-                data = self.socket.recv(1024)
+                data = self.s.recv(1024)
                 data = eval(data.decode("utf-8"))
 
                 if not data:
@@ -96,7 +129,7 @@ class Meter:
                         self.clear_for_next_epoch()
                         self.curr_epoch = data["epoch"]
                 elif data["type"] == "give_power":
-                    self.give_power(data["amount"], data["meter_id"], data["ip"], data["port"])
+                    self.give_power(data["amount"], data["ip"], data["port"])
                     curr_action = "give_power"
                 elif data["type"] == "update":
                     self.update_metrics(data)

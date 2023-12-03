@@ -30,6 +30,7 @@ class MetersGrid(QtW.QWidget):
     """
     meters: dict[str, Meter]
     canvas: QtW.QGraphicsView
+    layout: QtW.QVBoxLayout
 
     def __init__(self, meter_ids, meter_size) -> None:
         super().__init__()
@@ -40,12 +41,15 @@ class MetersGrid(QtW.QWidget):
         self.canvas = QtW.QGraphicsView(self.scene)
         self.canvas.setScene(self.scene)
         self.meters = {k: Meter(k, meter_size) for k in meter_ids}
-        pos = (0, 0)
+        pos: tuple[int, int] = (0, 0)
         offset = (pos[0] + csize / 2, pos[1] + csize / 2)
         r = csize / 2 - meter_size / 2
-        for pos, mid in zip(circle_coords(len(meter_ids), r, offset), meter_ids):
-            self.canvas.scene().addWidget(self.meters[mid])
-            self.meters[mid].move(*[int(i) for i in pos])
+        for p, mid in zip(circle_coords(len(meter_ids), r, offset), meter_ids):
+            scene = self.canvas.scene()
+            if scene is None:
+                continue
+            scene.addWidget(self.meters[mid])
+            self.meters[mid].move(*[int(i) for i in p])
         self.canvas.update()
         self.layout = QtW.QVBoxLayout()
         self.layout.addWidget(self.canvas)
@@ -64,6 +68,8 @@ class MetersGrid(QtW.QWidget):
         pen = QPen(QColor(*color))
         pen.setWidth(4)
         line = self.scene.addLine(*p1, *p2, pen)
+        if line is None:
+            return
         line.setZValue(-1)
 
     def connect_all(self, color):
@@ -74,5 +80,8 @@ class MetersGrid(QtW.QWidget):
         self.meters[meter_id].color(color)
 
     def set_text_meter(self, meter_id, text):
-        self.meters[meter_id].text.setText(text)
+        label = self.meters[meter_id].text
+        if label is None:
+            return
+        label.setText(text)
 

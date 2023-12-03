@@ -2,9 +2,11 @@ from src.gui import App
 import socket
 import threading
 import pickle
+from src.core.msg_types import UIUpdate
 
 ADDRESS = ("localhost", 1235)
 N = 12
+
 
 def update_ui(window, conn):
     grid = window.grid
@@ -23,24 +25,28 @@ def update_ui(window, conn):
                     surplus = meter_data
                     grid.set_text_meter(meter_id, str(round(surplus, 2)))
                     grid.color_meter(meter_id, (0, 255, 0) if surplus > 0 else (255, 0, 0))
-            case _:
-                print("Invalid message type")
-                
-if __name__ == "__main__":
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(ADDRESS)
-        s.listen()
-        print("UI server started")
-        conn, addr = s.accept()
-        print(f"Connection from {addr} has been established!")
-        data = pickle.loads(conn.recv(2048))
-        meter_ids = [i for i in data["meters"].keys()]
-        print(meter_ids)
-        app = App(meter_ids)
-        grid = app.window.grid
-        time = app.window.timer
-        grid.connect_all((128, 64, 0))
-        threading = threading.Thread(target=update_ui, args=(app.window, conn,  ))
-        threading.start()
-        app.exec()
 
+
+if __name__ == "__main__":
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(ADDRESS)
+    s.listen()
+    print("UI server started")
+    conn, addr = s.accept()
+    print(f"Connection from {addr} has been established!")
+    data = pickle.loads(conn.recv(2048))
+    meter_ids = [i for i in data["meters"].keys()]
+    print(meter_ids)
+    app = App(meter_ids)
+    grid = app.window.grid
+    time = app.window.timer
+    # grid.connect_all((240, 180, 255))
+    threading = threading.Thread(
+        target=update_ui,
+        args=(
+            app.window,
+            conn,
+        ),
+    )
+    threading.start()
+    app.exec()

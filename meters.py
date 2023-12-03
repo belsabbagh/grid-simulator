@@ -1,4 +1,4 @@
-from src.core.meter import Meter
+from src.core.meter import OldMeter
 
 
 if __name__ == "__main__":
@@ -6,7 +6,7 @@ if __name__ == "__main__":
     threads = []
     num_meters = 12
     for i in range(num_meters):
-        meter = Meter(i)
+        meter = OldMeter(i)
         meter_list.append(meter)
         thread1, thread2 = meter.start()
         threads.extend([thread1, thread2])
