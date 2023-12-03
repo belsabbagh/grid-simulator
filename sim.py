@@ -6,7 +6,7 @@ import random
 from datetime import datetime, timedelta
 import time
 import socket
-import json
+import pickle
 import threading
 
 connected_meter_sockets = []
