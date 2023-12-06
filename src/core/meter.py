@@ -14,9 +14,9 @@ class Meter:
     def create_thread(self, args=None):
         if args is None:
             args = ()
-        return threading.Thread(target=self.start, args=args)
+        return threading.Thread(target=self.run, args=args)
         
-    def start(self):
+    def run(self):
         data = self.s.recv(self.buffer_size)
         if not data:
             return

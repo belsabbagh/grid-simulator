@@ -1,30 +1,37 @@
-from src.gui import App
+from typing import Callable, Literal
+from src.gui import App, MainWindow
 import socket
 import threading
 import pickle
 from src.core.msg_types import UIUpdate
 
-ADDRESS = ("localhost", 1235)
+ADDRESS: tuple[Literal["localhost"], Literal[1235]] = ("localhost", 1235)
 N = 12
 
 
-def update_ui(window, conn):
-    grid = window.grid
-    time = window.timer
+def trade(window: MainWindow.MainWindow, msg: UIUpdate) -> None:
+    return None
+
+
+def no_update(window: MainWindow.MainWindow, msg: UIUpdate) -> None:
+    return None
+
+
+def update(window: MainWindow.MainWindow, msg: UIUpdate) -> None:
+    window.update_timer_label(msg["time"])
+    window.update_grid(msg["meters"])
+
+
+ui_updates: dict[str, Callable[[MainWindow.MainWindow, UIUpdate], None]] = {
+    "update": update,
+    "trade": trade,
+}
+
+
+def update_ui(window: MainWindow.MainWindow, conn) -> None:
     while True:
-        data = pickle.loads(conn.recv(2048))
-        data_type = data["type"]
-        match data_type:
-            case "trade":
-                from_meter = data["from_meter"]
-                to_meter = data["to_meter"]
-                grid.connect(from_meter, to_meter, (0, 0, 0))
-            case "update":
-                time.setText(data["time"])
-                for meter_id, meter_data in data["meters"].items():
-                    surplus = meter_data
-                    grid.set_text_meter(meter_id, str(round(surplus, 2)))
-                    grid.color_meter(meter_id, (0, 255, 0) if surplus > 0 else (255, 0, 0))
+        data: UIUpdate = pickle.loads(conn.recv(2048))
+        ui_updates.get(data["type"], no_update)(window, data)
 
 
 if __name__ == "__main__":
@@ -32,21 +39,14 @@ if __name__ == "__main__":
     s.bind(ADDRESS)
     s.listen()
     print("UI server started")
+    print("Waiting for `server.py` to start...")
     conn, addr = s.accept()
     print(f"Connection from {addr} has been established!")
     data = pickle.loads(conn.recv(2048))
-    meter_ids = [i for i in data["meters"].keys()]
+    meter_ids: list[tuple[str, int]] = [i for i in data["meters"].keys()]
     print(meter_ids)
     app = App(meter_ids)
-    grid = app.window.grid
-    time = app.window.timer
     # grid.connect_all((240, 180, 255))
-    threading = threading.Thread(
-        target=update_ui,
-        args=(
-            app.window,
-            conn,
-        ),
-    )
+    threading = threading.Thread(target=update_ui, args=(app.window, conn))
     threading.start()
     app.exec()

@@ -30,7 +30,7 @@ def moment(
     t, conns: list[tuple[socket.socket, tuple[str, int]]], ui_conn: socket.socket
 ):
     print(f"Time: {t}")
-    threads = []
+    threads: list[threading.Thread] = []
     results: dict[tuple[str, int], float] = {}
     for conn, addr in conns:
         t1 = threading.Thread(target=client_connection, args=(conn, addr, results))
@@ -40,7 +40,11 @@ def moment(
     for t1 in threads:
         t1.join()
     print("Threads finished")
-    ui_update = {"type": "update", "time": t.strftime("%H:%M:%S"), "meters": results}
+    ui_update: UIUpdate = {
+        "type": "update",
+        "time": t.strftime("%H:%M:%S"),
+        "meters": results,
+    }
     ui_conn.sendall(pickle.dumps(ui_update))
     print(results)
 
@@ -53,6 +57,7 @@ if __name__ == "__main__":
         s.listen(NUM_HOUSES)
         print("Server started")
         conns: list[tuple[socket.socket, tuple[str, int]]] = []
+        print("Waiting to connect to meters...")
         for _ in range(NUM_HOUSES):
             conn, addr = s.accept()
             conns.append((conn, addr))
