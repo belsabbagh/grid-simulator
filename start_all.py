@@ -1,75 +1,44 @@
 import subprocess
 import threading
-from PyQt6 import QtWidgets
+import time
+from src.gui import backend as be_gui
+WAIT = 3
 
-
-class TextView(QtWidgets.QTextEdit):
-    def __init__(self):
-        super().__init__()
-        self.setReadOnly(True)
-
-    def log(self, text):
-        self.append(text)
-
-
-class MainWindow(QtWidgets.QMainWindow):
-    ui_log: TextView
-    server_log: TextView
-    clients_log: TextView
-
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Logger")
-        self.resize(1200, 800)
-        frame = QtWidgets.QFrame()
-        layout = QtWidgets.QHBoxLayout()
-        frame.setLayout(layout)
-        self.setCentralWidget(frame)
-        self.ui_log = TextView()
-        self.server_log = TextView()
-        self.clients_log = TextView()
-        layout.addWidget(self.ui_log)
-        layout.addWidget(self.server_log)
-        layout.addWidget(self.clients_log)
-        self.show()
-
-
-class BackendApp(QtWidgets.QApplication):
-    def __init__(self):
-        super().__init__([])
-        self.main_window = MainWindow()
-
+class NamedPopen(subprocess.Popen):
+    def __init__(self, name: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name: str = name
 
 def update_logger(textview, p: subprocess.Popen):
-    while True:
-        if not p.stdout:
+    while p.poll() is None:
+        if p.stdout is None:
             continue
-        line = p.stdout.readline()
+        line: bytes = p.stdout.readline()
         if not line:
-            textview.log("Nothing to write\n")
+            continue
         textview.log(line.decode("utf-8"))
 
+
 if __name__ == "__main__":
-    app = BackendApp()
-    # start the 3 scripts
-    subprocesses = [
-        subprocess.Popen(["python", "server.py"], stdout=subprocess.PIPE),
-        subprocess.Popen(["python", "clients.py"], stdout=subprocess.PIPE),
-        subprocess.Popen(["python", "ui.py"], stdout=subprocess.PIPE),
+    app = be_gui.BackendApp()
+    processes: list[str] = [
+        "ui.py",
+        "server.py",
+        "clients.py",
     ]
-    # read the output of each script and log it in the UI
+    loggers: dict[str, be_gui.TextView] = {
+        "ui.py": app.main_window.ui_log,
+        "server.py": app.main_window.server_log,
+        "clients.py": app.main_window.clients_log,
+    }
+    subprocesses: list[NamedPopen] = []
+    for p in processes:
+        subprocesses.append(NamedPopen(p, ["python", f"src/gui/backend/{p}"]))
+        time.sleep(WAIT)
+
     for p in subprocesses:
-        textview = None
-        name = p.args[1].split("\\")[-1]
-        match name:
-            case "server.py":
-                textview = app.main_window.server_log
-            case "clients.py":
-                textview = app.main_window.clients_log
-            case "ui.py":
-                textview = app.main_window.ui_log
-            case _:
-                print(f"Invalid script name: {name}")
+        name: str = p.name
+        textview: be_gui.TextView = loggers[name]
         threading.Thread(target=update_logger, args=(textview, p)).start()
     print("All scripts started")
     app.exec()

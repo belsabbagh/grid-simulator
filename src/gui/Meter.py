@@ -4,19 +4,17 @@ from PIL import Image, ImageQt
 import PyQt6 as Qt
 from PyQt6 import QtCore
 
-def color_icon(img: Image, color: tuple) -> Image:
+
+def color_icon(img: Image.Image, color: tuple) -> Image.Image:
     """Replace solid black pixels with a color"""
-    data = img.getdata()
-    img.putdata([color if px[-1] != 0 else px for px in data])
+    img.putdata([color if px[-1] != 0 else px for px in img.getdata()]) # type: ignore
     return img
 
 
 class Meter(QtW.QWidget):
-    icon = None
-    frame = None
-    canvas = None
-    meter_id = None
-    text = None
+    icon: QtW.QLabel
+    meter_id: str
+    text: QtW.QLabel
 
     def __init__(self, meter_id, size=100):
         super().__init__()
@@ -28,19 +26,19 @@ class Meter(QtW.QWidget):
         self.icon.setPixmap(pixmap)
         self.text = QtW.QLabel()
         self.text.setText("0")
-        self.text.setAlignment(Qt.QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.layout = QtW.QVBoxLayout()
+        self.text.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.layout = QtW.QVBoxLayout() # type: ignore
         self.layout.addWidget(self.text)
         self.layout.addWidget(self.icon)
         self.setLayout(self.layout)
-        self.icon.mousePressEvent = self.on_click
+        self.mousePressEvent = self.on_click # type: ignore
         self.setObjectName("meter")
         self.setStyleSheet("#meter {background-color: transparent; border: none;}")
 
-    def on_click(self, event):
+    def on_click(self, event) -> None:
         print(self.meter_id)
 
-    def color(self, color: tuple):
+    def color(self, color: tuple) -> None:
         self.img = color_icon(self.img, color)
         qtimg = QImage(ImageQt.ImageQt(self.img))
         self.icon.setPixmap(QPixmap.fromImage(qtimg))

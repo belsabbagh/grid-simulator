@@ -1,5 +1,4 @@
 from PyQt6 import QtWidgets as QtW
-import PyQt6
 from PyQt6.QtCore import Qt
 from .MetersGrid import MetersGrid
 
@@ -8,7 +7,7 @@ class MainWindow(QtW.QMainWindow):
     grid: MetersGrid
     timer: QtW.QLabel
 
-    def __init__(self, meter_ids):
+    def __init__(self, meter_ids) -> None:
         super().__init__()
         self.setWindowTitle("Meters")
         self.setGeometry(100, 100, 1000, 600)

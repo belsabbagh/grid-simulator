@@ -1,37 +1,41 @@
 import pickle
 import threading
 import socket
+from typing import Any
 
 
 class Meter:
     s: socket.socket
-    
-    def __init__(self, socket, server_address, buffer_size):
-        self.s = socket
-        self.s.connect(server_address)
-        self.buffer_size = buffer_size
-        
-    def create_thread(self, args=None):
+
+    def __init__(self, s: socket.socket, server_addr: tuple[str, int], buf_size: int) -> None:
+        self.s = s
+        self.s.connect(server_addr)
+        self.buffer_size = buf_size
+
+    def mkthread(self, args=None):
         if args is None:
             args = ()
         return threading.Thread(target=self.run, args=args)
-        
+
     def run(self):
-        data = self.s.recv(self.buffer_size)
-        if not data:
+        recv_stream: bytes = self.s.recv(self.buffer_size)
+        if not recv_stream:
             return
-        data = pickle.loads(data)
+        data: dict[str, Any] = pickle.loads(recv_stream)
         data_type = data["type"]
         match data_type:
             case "power":
                 self._handle_power(data)
             case _:
                 print("Invalid message type")
-                
-    def _handle_power(self, data):
-        gen, con = data['generation'], data['consumption']
+
+    def _handle_power(self, data) -> None:
+        gen, con = data["generation"], data["consumption"]
         surplus = gen - con
         self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "surplus": surplus}))
+
+    def is_connected(self) -> bool:
+        return self.s.fileno() != -1
 
 
 class OldMeter:
@@ -97,7 +101,9 @@ class OldMeter:
         s.connect((ip, port))
         if self.status == "surplus":
             if amount > self.generated - self.consumption:
-                print(f"Meter {self.meter_id} has {self.generated - self.consumption} power")
+                print(
+                    f"Meter {self.meter_id} has {self.generated - self.consumption} power"
+                )
                 amount = self.generated - self.consumption
             data = {"meter_id": self.meter_id, "amount": amount, "type": "power"}
             s.sendall(bytes(str(data), "utf-8"))
@@ -110,7 +116,6 @@ class OldMeter:
         self.given = 0
         self.status = "none"
         self.curr_actions = []
-
 
     def listen(self):
         while True:
@@ -135,14 +140,24 @@ class OldMeter:
                     self.update_metrics(data)
                     curr_action = "update"
 
-                print(f"Meter {self.meter_id}: Consumption: {self.consumption}, Generated: {self.generated}, Taken: {self.taken}")
+                print(
+                    f"Meter {self.meter_id}: Consumption: {self.consumption}, Generated: {self.generated}, Taken: {self.taken}"
+                )
                 print(f"Meter {self.meter_id}: Current Actions: {self.curr_actions}")
 
                 self.detect_power_consumption()
-                self.curr_log = {"meter_id": self.meter_id, "consumption": self.consumption, "generated": self.generated, "taken": self.taken, "actions": self.curr_actions}
+                self.curr_log = {
+                    "meter_id": self.meter_id,
+                    "consumption": self.consumption,
+                    "generated": self.generated,
+                    "taken": self.taken,
+                    "actions": self.curr_actions,
+                }
                 self.curr_actions.append(curr_action)
                 if self.curr_epoch in self.log:
-                    self.curr_log["actions"] = self.log[self.curr_epoch]["actions"] + self.curr_log["actions"]
+                    self.curr_log["actions"] = (
+                        self.log[self.curr_epoch]["actions"] + self.curr_log["actions"]
+                    )
                     self.log[self.curr_epoch] = self.curr_log
                 else:
                     self.log[self.curr_epoch] = self.curr_log

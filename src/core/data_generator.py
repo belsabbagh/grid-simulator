@@ -6,16 +6,17 @@ import pandas as pd
 TIME_FORMAT = "%H:%M:%S"
 
 
-def generate_random(t: dt.time, df: pd.DataFrame, deviation: float) -> float:
-    def sub_time(t1: pd.Timestamp, t2: pd.Timestamp) -> dt.timedelta:
-        a: dt.time = t1.time()
-        b: dt.time = t2.time()
-        return dt.timedelta(
-            hours=a.hour - b.hour,
-            minutes=a.minute - b.minute,
-            seconds=a.second - b.second,
-        )
+def sub_time(t1: pd.Timestamp, t2: pd.Timestamp) -> dt.timedelta:
+    a: dt.time = t1.time()
+    b: dt.time = t2.time()
+    return dt.timedelta(
+        hours=a.hour - b.hour,
+        minutes=a.minute - b.minute,
+        seconds=a.second - b.second,
+    )
 
+
+def generate_random(t: dt.time, df: pd.DataFrame, deviation: float) -> float:
     ts = pd.Timestamp(t.strftime(TIME_FORMAT))
 
     def min_key(x: pd.Timestamp) -> float:
@@ -28,7 +29,7 @@ def generate_random(t: dt.time, df: pd.DataFrame, deviation: float) -> float:
 
 
 def mk_gen_df() -> pd.DataFrame:
-    """This is where you load the generated power dataframe"""
+    """This is where you load the generated power dataframe. The dataframe should have a column named "value" and an index of type datetime.datetime."""
     gen: pd.DataFrame = pd.read_csv("data/gen.txt", sep=";")
     gen.set_index("Time", inplace=True)
     gen.index = pd.to_datetime(gen.index, format=TIME_FORMAT)
@@ -40,7 +41,7 @@ def mk_gen_df() -> pd.DataFrame:
 
 
 def mk_con_df() -> pd.DataFrame:
-    """This is where you load the consumed power dataframe"""
+    """This is where you load the consumed power dataframe. The dataframe should have a column named "value" and an index of type datetime.datetime."""
     con: pd.DataFrame = pd.read_csv("data/output.txt")
     con.set_index("Time", inplace=True)
     con.index = pd.to_datetime(con.index, format=TIME_FORMAT)

@@ -17,7 +17,7 @@ if __name__ == "__main__":
         Meter(mksocket(), SERVER_ADDRESS, BUFFER_SIZE) for _ in range(N)
     ]
     while True:
-        threads: list[threading.Thread] = [m.create_thread() for m in meters]
+        threads = [m.mkthread() for m in meters]
         for t in threads:
             t.start()
         for t in threads:
