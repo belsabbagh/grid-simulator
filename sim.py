@@ -8,6 +8,7 @@ import time
 import socket
 import pickle
 import threading
+import tqdm
 
 connected_meter_sockets = []
 
@@ -277,7 +278,38 @@ def wait_for_meters():
         meter_thread.start()
 
 
-if __name__ == "__main__":
+def generate_timeseries():
+    # using the same way the data was generated for each household, generate a timeseries of power need for a household, and globalIntensity for the household
+    # this will be used to train a model later on
+
+    df = pd.read_csv("data/output.txt")
+    df2 = pd.read_csv("data/gen.txt", sep=";")
+
+    # merge the two dataframes
+    df_merged = pd.merge(df, df2, on='Time')
+     
+    # df2 has these columns: Time,Global_active_power,Global_reactive_power,Voltage,Global_intensity,Sub_metering_1,Sub_metering_2,Sub_metering_3
+    # df has these columns: Simulated_Solar_Power;Time;Sun_intensity
+
+    # for each row in df2, generate a deficit which is the difference between random power consumption and random power generated, and an efficiency fluctuating around 0.9 with a standard deviation of 0.1
+    # and generate a column Transaction_duration which is the time it takes for the deficit to be filled using the global intensity, voltage and deficit amount
+    # and generate a column Transaction_amount which is the deficit amount
+
+    new_df = pd.DataFrame(columns=['Time', 'Global_active_power', 'Voltage', 'Global_intensity', 'Efficiency', 'Transaction_duration', 'Transaction_amount', 'Simulated_Solar_Power', 'Day'])  
+    for i in tqdm.tqdm(range(10)):
+        for index, row in tqdm.tqdm(df_merged.iterrows()):
+            deficit = (generate_random_power_consumption(df, row['Time']) - generate_random_power_generated(row['Time'], df2)) * 1000
+            deficit = deficit if deficit > 0 else 0
+            efficiency = np.random.normal(0.85, 0.07)
+            efficiency = efficiency if efficiency < 1 else 0.98
+            transaction_amount = deficit
+            transaction_duration = transaction_amount / (row['Voltage'] * row['Global_intensity']) 
+            new_df = pd.concat([new_df, pd.DataFrame([[row['Time'], row['Global_active_power'], row['Voltage'], row['Global_intensity'], efficiency, transaction_duration, transaction_amount, row['Simulated_Solar_Power'], i]], columns=['Time', 'Global_active_power', 'Voltage', 'Global_intensity', 'Efficiency', 'Transaction_duration', 'Transaction_amount', 'Simulated_Solar_Power', 'Day'])])
+        
+    new_df.to_csv("data/timeseries.csv", index=False, header=True, sep=";")
+
+
+def main(): 
     # dataset used https://www.kaggle.com/datasets/uciml/electric-power-consumption-data-set
     # average_by_time('data.txt', 'output.txt')
 
@@ -346,3 +378,9 @@ if __name__ == "__main__":
 
         # Pause for 2 seconds (simulating real-time passage)
         time.sleep(time_increment)
+if __name__ == "__main__":
+    # main()
+    generate_timeseries()
+
+
+
