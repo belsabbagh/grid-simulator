@@ -1,7 +1,7 @@
 import math
 from PyQt6 import QtWidgets as QtW
 from PyQt6.QtGui import QPen, QColor
-from src.gui.Meter import Meter
+from src.gui.Meter import MeterWidget
 
 
 def circle_coords(n, r, offset=None):
@@ -28,7 +28,7 @@ class MetersGrid(QtW.QWidget):
     - `color_meter(meter_id, color)` - color a meter with a color
     - `set_text_meter(meter_id, text)` - set the text of a meter
     """
-    meters: dict[str, Meter]
+    meters: dict[str, MeterWidget]
     canvas: QtW.QGraphicsView
     layout: QtW.QVBoxLayout
 
@@ -40,7 +40,7 @@ class MetersGrid(QtW.QWidget):
         self.scene = QtW.QGraphicsScene()
         self.canvas = QtW.QGraphicsView(self.scene)
         self.canvas.setScene(self.scene)
-        self.meters = {k: Meter(k, meter_size) for k in meter_ids}
+        self.meters = {k: MeterWidget(k, meter_size) for k in meter_ids}
         pos: tuple[int, int] = (0, 0)
         offset = (pos[0] + csize / 2, pos[1] + csize / 2)
         r = csize / 2 - meter_size / 2

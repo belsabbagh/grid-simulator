@@ -9,26 +9,26 @@ ADDRESS: tuple[Literal["localhost"], Literal[1235]] = ("localhost", 1235)
 N = 12
 
 
-def trade(window: MainWindow.MainWindow, msg: UIUpdate) -> None:
+def trade(window: MainWindow.GridView, msg: UIUpdate) -> None:
     return None
 
 
-def no_update(window: MainWindow.MainWindow, msg: UIUpdate) -> None:
+def no_update(_window: MainWindow.GridView, _msg: UIUpdate) -> None:
     return None
 
 
-def update(window: MainWindow.MainWindow, msg: UIUpdate) -> None:
+def update(window: MainWindow.GridView, msg: UIUpdate) -> None:
     window.update_timer_label(msg["time"])
     window.update_grid(msg["meters"])
 
 
-ui_updates: dict[str, Callable[[MainWindow.MainWindow, UIUpdate], None]] = {
+ui_updates: dict[str, Callable[[MainWindow.GridView, UIUpdate], None]] = {
     "update": update,
     "trade": trade,
 }
 
 
-def update_ui(window: MainWindow.MainWindow, conn) -> None:
+def update_ui(window: MainWindow.GridView, conn) -> None:
     while True:
         data: UIUpdate = pickle.loads(conn.recv(2048))
         ui_updates.get(data["type"], no_update)(window, data)

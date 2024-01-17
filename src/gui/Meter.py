@@ -11,7 +11,7 @@ def color_icon(img: Image.Image, color: tuple) -> Image.Image:
     return img
 
 
-class Meter(QtW.QWidget):
+class MeterWidget(QtW.QWidget):
     icon: QtW.QLabel
     meter_id: str
     text: QtW.QLabel

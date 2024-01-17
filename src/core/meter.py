@@ -7,7 +7,9 @@ from typing import Any
 class Meter:
     s: socket.socket
 
-    def __init__(self, s: socket.socket, server_addr: tuple[str, int], buf_size: int) -> None:
+    def __init__(
+        self, s: socket.socket, server_addr: tuple[str, int], buf_size: int
+    ) -> None:
         self.s = s
         self.s.connect(server_addr)
         self.buffer_size = buf_size
