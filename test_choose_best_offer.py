@@ -7,7 +7,7 @@ from src.gui import OptimizerApp
 
 INCREMENT_MINUTES = 1
 REFRESH_RATE = 5
-NUM_HOUSES = 12
+NUM_HOUSES = 25
 START_DATE = datetime.datetime(2010, 1, 1, 10, 0, 0)
 END_DATE = datetime.datetime(2010, 1, 1, 19, 0, 0)
 DEVIATION = 0.1

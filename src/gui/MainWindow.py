@@ -100,6 +100,7 @@ class TestOptimizer(QtW.QMainWindow):
     timer: QtW.QLabel
     best_choice: KeyValueList
     surpluses: KeyValueList
+
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("TestPredict")
@@ -109,8 +110,8 @@ class TestOptimizer(QtW.QMainWindow):
         mainLayout = QtW.QHBoxLayout()
         mainWidget = QtW.QWidget()
         mainLayout.addLayout(headerLayout)
-        self.surpluses = KeyValueList({str(k + 1): "" for k in range(12)})
-        self.best_choice = KeyValueList({str(k + 1): "" for k in range(12)})
+        self.surpluses = KeyValueList({str(k + 1): "" for k in range(25)})
+        self.best_choice = KeyValueList({str(k + 1): "" for k in range(25)})
         mainLayout.addWidget(self.surpluses)
         mainLayout.addWidget(self.best_choice)
         mainWidget.setLayout(mainLayout)
@@ -126,12 +127,12 @@ class TestOptimizer(QtW.QMainWindow):
         headerLayout.addWidget(self.timer)
         return headerLayout
 
-
     def update_timer_label(self, text) -> None:
         self.timer.setText(text)
-        
+
     def update_choices(self, data: dict) -> None:
         self.best_choice.update(data)
-    
+
     def update_meters(self, data: dict) -> None:
-        self.surpluses.update(data)
+        rounded = {k: round(v, 3) for k, v in data.items()}
+        self.surpluses.update(rounded)
