@@ -49,7 +49,7 @@ def mk_con_df() -> pd.DataFrame:
     return con
 
 
-def make_instance_generator(
+def mk_instance_generator(
     d: float,
 ) -> Callable[[dt.datetime], tuple[float, float]]:
     gen: pd.DataFrame = mk_gen_df()
@@ -59,3 +59,21 @@ def make_instance_generator(
         return generate_random(t.time(), gen, d), generate_random(t.time(), con, d)
 
     return instance_generator
+
+
+def generate_normal_random_parameters(means, deviations) -> list[float]:
+    # generate a normmally distributed random number for each mean and deviation
+    return [
+        random.random() * deviation + mean for mean, deviation in zip(means, deviations)
+    ]
+
+
+def mk_grid_state_generator():
+
+    means: list[float] = [0.4, 20, 239.696, 3.132, 900]
+    devs: list[float] = [0.1, 1, 1, 0.1, 10]
+
+    def generate_grid_state(t: dt.datetime):
+        return generate_normal_random_parameters(means, devs)
+
+    return generate_grid_state

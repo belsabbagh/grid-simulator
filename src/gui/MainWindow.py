@@ -94,3 +94,44 @@ class TestPredict(QtW.QMainWindow):
 
     def update_predictions(self, data: dict) -> None:
         self.predictions.update(data)
+
+
+class TestOptimizer(QtW.QMainWindow):
+    timer: QtW.QLabel
+    best_choice: KeyValueList
+    surpluses: KeyValueList
+    def __init__(self) -> None:
+        super().__init__()
+        self.setWindowTitle("TestPredict")
+        self.setGeometry(100, 100, 1000, 600)
+        self.timer = QtW.QLabel()
+        headerLayout: QtW.QHBoxLayout = self.__mk_header()
+        mainLayout = QtW.QHBoxLayout()
+        mainWidget = QtW.QWidget()
+        mainLayout.addLayout(headerLayout)
+        self.surpluses = KeyValueList({str(k + 1): "" for k in range(12)})
+        self.best_choice = KeyValueList({str(k + 1): "" for k in range(12)})
+        mainLayout.addWidget(self.surpluses)
+        mainLayout.addWidget(self.best_choice)
+        mainWidget.setLayout(mainLayout)
+        self.setCentralWidget(mainWidget)
+
+    def __mk_header(self) -> QtW.QHBoxLayout:
+        self.timer.setText("00:00")
+        font = self.timer.font()
+        font.setPointSize(24)
+        self.timer.setFont(font)
+        self.timer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        headerLayout = QtW.QHBoxLayout()
+        headerLayout.addWidget(self.timer)
+        return headerLayout
+
+
+    def update_timer_label(self, text) -> None:
+        self.timer.setText(text)
+        
+    def update_choices(self, data: dict) -> None:
+        self.best_choice.update(data)
+    
+    def update_meters(self, data: dict) -> None:
+        self.surpluses.update(data)

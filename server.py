@@ -3,7 +3,7 @@ import socket
 import threading
 import time
 import pickle
-from src.core.data_generator import make_instance_generator
+from src.core.data_generator import mk_instance_generator
 from src.core.msg_types import UIUpdate
 
 INCREMENT_MINUTES = 1
@@ -15,7 +15,7 @@ START_DATE = datetime.datetime(2010, 1, 1, 10, 0, 0)
 END_DATE = datetime.datetime(2010, 1, 1, 19, 0, 0)
 DEVIATION = 0.1
 
-data_generator = make_instance_generator(DEVIATION)
+data_generator = mk_instance_generator(DEVIATION)
 
 
 def client_connection(conn, addr, results):

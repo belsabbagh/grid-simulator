@@ -1,7 +1,7 @@
 from PyQt6 import QtWidgets as QtW
 from .MainWindow import GridView as MW
 from .MainWindow import TestPredict as TP
-
+from .MainWindow import TestOptimizer as TO
 
 class App(QtW.QApplication):
     def __init__(self, meter_ids) -> None:
@@ -13,6 +13,12 @@ class PredictApp(QtW.QApplication):
     def __init__(self) -> None:
         super().__init__([])
         self.window = TP()
+        self.window.show()
+        
+class OptimizerApp(QtW.QApplication):
+    def __init__(self) -> None:
+        super().__init__([])
+        self.window = TO()
         self.window.show()
 
 __all__ = ["App"]

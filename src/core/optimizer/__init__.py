@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import tensorflow as tf
 
 load_model = tf.keras.models.load_model
@@ -23,3 +24,50 @@ def mk_predict_function(efficiency_model_path, duration_model_path, quality_mode
 
     # Return
     return predict_function
+
+@dataclass
+class Offer:
+    amount: float
+    source: str
+    
+@dataclass
+class Trade:
+    amount: float
+    source: str
+    destination: str
+    timestamp: str
+    duration: float
+    efficiency: float
+    quality: float
+
+@dataclass
+class GridMetrics:
+    load: float
+    temperature: float
+    voltage: float
+    intensity: float
+
+def get_selling_history(meter_id: str):
+    """This function should return a list of trades that the meter sold in the past"""
+    return []
+    
+def mk_fitness_function(efficiency_model_path, duration_model_path, quality_model_path):
+    predict = mk_predict_function(efficiency_model_path, duration_model_path, quality_model_path)
+
+    def fitness(amount_needed, offer: Offer, metrics: GridMetrics) -> float:
+        """This function should return a fitness score for the offer"""
+        efficiency, duration = predict(metrics.load, metrics.temperature, metrics.voltage, metrics.intensity, offer.amount)
+        selling_history = get_selling_history(offer.source)
+        return 1/(offer.amount - amount_needed)
+
+    return fitness
+
+
+def mk_choose_best_offers_function(efficiency_model_path, duration_model_path, quality_model_path, count: int = 5):
+    fitness = mk_fitness_function(efficiency_model_path, duration_model_path, quality_model_path)
+
+    def choose_best_offers_function(amount_needed, offers, metrics: GridMetrics) -> list[Offer]:
+        """This function should return the best offers from the list of offers"""
+        return sorted(offers, key=lambda offer: fitness(amount_needed, offer, metrics), reverse=True)[:count]
+        
+    return choose_best_offers_function

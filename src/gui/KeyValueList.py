@@ -21,9 +21,9 @@ class KeyValueList(QtW.QWidget):
             kv_layout.setSpacing(0)
             self.layout.addLayout(kv_layout)
             
-    def update(self, data: dict) -> None:
+    def update(self, data: dict, default=None) -> None:
         for i in range(self.layout.count()):
             layout = self.layout.itemAt(i)
             key = layout.itemAt(0).widget().text()[:-2]
-            value = data[key]
+            value = data.get(key, default)
             layout.itemAt(1).widget().setText(str(value))
