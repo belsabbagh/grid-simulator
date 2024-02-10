@@ -1,4 +1,5 @@
 import datetime
+import random
 import threading
 import time
 from src.core.data_generator import mk_instance_generator, mk_grid_state_generator
@@ -32,6 +33,10 @@ def split_to_deficit_and_surplus(meters):
         groups[not v >= 0][k] = v
     return groups
 
+def fmt_choice(choice: tuple[Offer, float]):
+    return f"{choice[0].source} -> {choice[1]}"
+
+
 def update_ui(app: OptimizerApp):
     t = START_DATE
     while t < END_DATE:
@@ -47,8 +52,9 @@ def update_ui(app: OptimizerApp):
             intensity=grid_state[3],
         )
         offers_dict, deficits = split_to_deficit_and_surplus(meters)
-        offers = [Offer(amount=v, source=k) for k, v in offers_dict.items()]
-        best_choices = {d: str(choose_best(deficits[d], offers, grid_metrics)[0].source) for d in deficits}
+        offers = [Offer(amount=v, source=k, participation_count=random.randint(1, 3)) for k, v in offers_dict.items()]
+        choices = map(lambda x: choose_best(deficits[x], offers, grid_metrics), deficits)
+        best_choices = {k: fmt_choice(v[0]) for k, v in zip(deficits.keys(), choices)}
         app.window.update_meters(meters)
         app.window.update_choices(best_choices)
         app.window.update_timer_label(t.strftime("%H:%M"))

@@ -1,14 +1,12 @@
-waste_weight = 0.4
-time_weight = 0.3
-distance_weight = 0.3
+import numpy as np
 
-def calculate_transaction_score(waste, time, distance):
-    # Normalize values 
-    normalized_waste = waste / max(waste, time, distance)
-    normalized_time = time / max(waste, time, distance)
-    normalized_distance = distance / max(waste, time, distance)
 
-    # Calculate the transaction score using the weighted sum
-    score = (waste_weight * normalized_waste) + (time_weight * normalized_time) + (distance_weight * normalized_distance)
+def mk_calculate_transaction_score_function():
+    waste_weight = 0.4
+    time_weight = 0.3
 
-    return score
+    def calculate_transaction_score(wasted_amount, trade_duration):
+        """This function should return a score for the transaction. The higher the better. We want to minimize the waste and the time it takes to complete the transaction. The values are NOT normalized"""
+        return (1 - wasted_amount) * waste_weight + (1 - trade_duration) * time_weight
+
+    return calculate_transaction_score
