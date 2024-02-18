@@ -2,8 +2,8 @@ import numpy as np
 
 
 def mk_calculate_transaction_score_function():
-    waste_weight = 0.4
-    time_weight = 0.3
+    waste_weight = 0.5
+    time_weight = 0.5
 
     def calculate_transaction_score(wasted_amount, trade_duration):
         """This function should return a score for the transaction. The higher the better. We want to minimize the waste and the time it takes to complete the transaction. The values are NOT normalized"""

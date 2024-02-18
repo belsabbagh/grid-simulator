@@ -1,8 +1,16 @@
 from dataclasses import dataclass
 import tensorflow as tf
 import numpy as np
+import pygad
+
+
+from src.core.transaction_quality.scoring import mk_calculate_transaction_score_function
 
 load_model = tf.keras.models.load_model
+
+
+def calculate_similarity():
+    pass
 
 
 def mk_predict_function(efficiency_model_path, duration_model_path, quality_model_path):
@@ -28,7 +36,6 @@ def mk_predict_function(efficiency_model_path, duration_model_path, quality_mode
         )
         return efficiency, duration[0][0]
 
-    # Return
     return predict_function
 
 
@@ -69,6 +76,8 @@ def mk_fitness_function(efficiency_model_path, duration_model_path, quality_mode
     )
     weights = (1, -1, 1, -1, 1, -1)
 
+    calculate_transaction_score = mk_calculate_transaction_score_function()
+
     def fitness(amount_needed, offer: Offer, metrics: GridMetrics) -> float:
         """This function should return a fitness score for the offer.
         - Higher efficiency should be better
@@ -84,7 +93,7 @@ def mk_fitness_function(efficiency_model_path, duration_model_path, quality_mode
             metrics.intensity,
             offer.amount,
         )
-        quality = 1  # quality_model.predict([[efficiency, duration, offer.amount]])
+        quality = calculate_transaction_score(offer.amount - amount_needed, duration)
         selling_history = get_selling_history(offer.source)
         participation_count = len(selling_history)
         params = (

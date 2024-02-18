@@ -101,7 +101,7 @@ class TestOptimizer(QtW.QMainWindow):
     best_choice: KeyValueList
     surpluses: KeyValueList
 
-    def __init__(self) -> None:
+    def __init__(self, num_houses) -> None:
         super().__init__()
         self.setWindowTitle("TestPredict")
         self.setGeometry(100, 100, 1000, 600)
@@ -110,8 +110,8 @@ class TestOptimizer(QtW.QMainWindow):
         mainLayout = QtW.QHBoxLayout()
         mainWidget = QtW.QWidget()
         mainLayout.addLayout(headerLayout)
-        self.surpluses = KeyValueList({str(k + 1): "" for k in range(25)})
-        self.best_choice = KeyValueList({str(k + 1): "" for k in range(25)})
+        self.surpluses = KeyValueList({str(k + 1): "" for k in range(num_houses)})
+        self.best_choice = KeyValueList({str(k + 1): "" for k in range(num_houses)})
         mainLayout.addWidget(self.surpluses)
         mainLayout.addWidget(self.best_choice)
         mainWidget.setLayout(mainLayout)

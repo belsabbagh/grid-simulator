@@ -7,8 +7,8 @@ from src.core.optimizer import mk_choose_best_offers_function, GridMetrics, Offe
 from src.gui import OptimizerApp
 
 INCREMENT_MINUTES = 1
-REFRESH_RATE = 5
-NUM_HOUSES = 25
+REFRESH_RATE = 0.5
+NUM_HOUSES = 12
 START_DATE = datetime.datetime(2010, 1, 1, 10, 0, 0)
 END_DATE = datetime.datetime(2010, 1, 1, 19, 0, 0)
 DEVIATION = 0.1
@@ -34,7 +34,7 @@ def split_to_deficit_and_surplus(meters):
     return groups
 
 def fmt_choice(choice: tuple[Offer, float]):
-    return f"{choice[0].source} -> {choice[1]}"
+    return f"{choice[0].source} -> {choice[1]:.4f}"
 
 
 def update_ui(app: OptimizerApp):
@@ -54,7 +54,7 @@ def update_ui(app: OptimizerApp):
         offers_dict, deficits = split_to_deficit_and_surplus(meters)
         offers = [Offer(amount=v, source=k, participation_count=random.randint(1, 3)) for k, v in offers_dict.items()]
         choices = map(lambda x: choose_best(deficits[x], offers, grid_metrics), deficits)
-        best_choices = {k: fmt_choice(v[0]) for k, v in zip(deficits.keys(), choices)}
+        best_choices = {k: None if not v else fmt_choice(v[0]) for k, v in zip(deficits.keys(), choices)}
         app.window.update_meters(meters)
         app.window.update_choices(best_choices)
         app.window.update_timer_label(t.strftime("%H:%M"))
@@ -63,7 +63,7 @@ def update_ui(app: OptimizerApp):
 
 
 if __name__ == "__main__":
-    app = OptimizerApp()
+    app = OptimizerApp(NUM_HOUSES)
     thread = threading.Thread(target=update_ui, args=(app,))
     thread.start()
     app.exec()

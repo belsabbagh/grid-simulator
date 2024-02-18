@@ -16,9 +16,9 @@ class PredictApp(QtW.QApplication):
         self.window.show()
         
 class OptimizerApp(QtW.QApplication):
-    def __init__(self) -> None:
+    def __init__(self, num_houses) -> None:
         super().__init__([])
-        self.window = TO()
+        self.window = TO(num_houses)
         self.window.show()
 
 __all__ = ["App"]
