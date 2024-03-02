@@ -33,7 +33,7 @@ if __name__ == "__main__":
     }
     subprocesses: list[NamedPopen] = []
     for p in processes:
-        subprocesses.append(NamedPopen(p, ["python", f"src/gui/backend/{p}"]))
+        subprocesses.append(NamedPopen(p, ["python", f"{p}"]))
         time.sleep(WAIT)
 
     for p in subprocesses:

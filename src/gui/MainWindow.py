@@ -41,6 +41,15 @@ class GridView(QtW.QMainWindow):
             self.grid.set_text_meter(meter_id, str(round(surplus, 2)))
             self.grid.color_meter(meter_id, (0, 255, 0) if surplus > 0 else (255, 0, 0))
 
+    def make_connection(self, m1, m2):
+        self.grid.connect(m1, m2, (0, 0, 0))
+
+    def remove_connection(self, m1, m2):
+        self.grid.connect(m1, m2, (255, 255, 255))
+        
+    def clear_connections(self):
+        self.grid.connect_all((255, 255, 255))
+
 
 class TestPredict(QtW.QMainWindow):
     timer: QtW.QLabel

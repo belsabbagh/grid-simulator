@@ -1,18 +1,22 @@
 import pickle
 import threading
 import socket
-from typing import Any
-
+from typing import Any, Callable
+import random
 
 class Meter:
     s: socket.socket
+    trade_chooser: Callable
 
     def __init__(
-        self, s: socket.socket, server_addr: tuple[str, int], buf_size: int
+        self,
+        s: socket.socket,
+        buf_size: int,
+        trade_chooser: Callable,
     ) -> None:
         self.s = s
-        self.s.connect(server_addr)
         self.buffer_size = buf_size
+        self.trade_chooser = trade_chooser
 
     def mkthread(self, args=None):
         if args is None:
@@ -25,16 +29,26 @@ class Meter:
             return
         data: dict[str, Any] = pickle.loads(recv_stream)
         data_type = data["type"]
-        match data_type:
-            case "power":
-                self._handle_power(data)
-            case _:
-                print("Invalid message type")
-
-    def _handle_power(self, data) -> None:
+        if data_type != "power":
+            raise ValueError("Haven't received power data.")
         gen, con = data["generation"], data["consumption"]
         surplus = gen - con
-        self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "surplus": surplus}))
+        self.s.sendall(
+            pickle.dumps(
+                {"from": self.s.getsockname(), "surplus": surplus, type: "surplus"}
+            )
+        )
+        recv_stream = self.s.recv(2048)
+        if not recv_stream:
+            return
+        data = pickle.loads(recv_stream)
+        if data["type"] != "offers":
+            return
+        if not data["offers"]:
+            self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "trade": None}))
+            return
+        source, amount = random.choice(data["offers"])
+        self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "trade": source}))
 
     def is_connected(self) -> bool:
         return self.s.fileno() != -1

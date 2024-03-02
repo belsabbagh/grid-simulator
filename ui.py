@@ -3,14 +3,16 @@ from src.gui import App, MainWindow
 import socket
 import threading
 import pickle
-from src.core.msg_types import UIUpdate
+from src.core.types import UIUpdate
 
-ADDRESS: tuple[Literal["localhost"], Literal[1235]] = ("localhost", 1235)
-N = 12
+ADDRESS = ("localhost", 7283)
+N = 20
 
 
 def trade(window: MainWindow.GridView, msg: UIUpdate) -> None:
-    return None
+    window.clear_connections()
+    for m1, m2 in msg["trades"].items():
+        window.make_connection(m1, m2)
 
 
 def no_update(_window: MainWindow.GridView, _msg: UIUpdate) -> None:
@@ -32,7 +34,6 @@ def update_ui(window: MainWindow.GridView, conn) -> None:
     while True:
         data: UIUpdate = pickle.loads(conn.recv(2048))
         ui_updates.get(data["type"], no_update)(window, data)
-
 
 if __name__ == "__main__":
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

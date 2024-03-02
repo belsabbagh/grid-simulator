@@ -1,16 +1,18 @@
-from dataclasses import dataclass
 import tensorflow as tf
 import numpy as np
-import pygad
+import random
 
 
 from src.core.transaction_quality.scoring import mk_calculate_transaction_score_function
-
+from src.core.types import Offer, GridMetrics
 load_model = tf.keras.models.load_model
 
 
-def calculate_similarity():
-    pass
+def mk_select_random_offers_function(count: int = 5):
+    def select_random_offers_function(offers) -> list[Offer]:
+        return random.sample(offers, count)
+
+    return select_random_offers_function
 
 
 def mk_predict_function(efficiency_model_path, duration_model_path, quality_model_path):
@@ -37,37 +39,6 @@ def mk_predict_function(efficiency_model_path, duration_model_path, quality_mode
         return efficiency, duration[0][0]
 
     return predict_function
-
-
-@dataclass
-class Offer:
-    amount: float
-    source: str
-    participation_count: int
-
-
-@dataclass
-class Trade:
-    amount: float
-    source: str
-    destination: str
-    timestamp: str
-    duration: float
-    efficiency: float
-    quality: float
-
-
-@dataclass
-class GridMetrics:
-    load: float
-    temperature: float
-    voltage: float
-    intensity: float
-
-
-def get_selling_history(meter_id: str):
-    """This function should return a list of trades that the meter sold in the past"""
-    return []
 
 
 def mk_fitness_function(efficiency_model_path, duration_model_path, quality_model_path):
@@ -120,6 +91,10 @@ def mk_choose_best_offers_function(
         amount_needed, offers, metrics: GridMetrics
     ) -> list[tuple[Offer, float]]:
         """This function should return the best offers from the list of offers and their scores."""
+        count = 5
+        random_select = mk_select_random_offers_function(count)
+        if len(offers) > count:
+            offers = random_select(offers)
         fitness_scores: map[tuple[Offer, float]] = map(
             lambda offer: (offer, fitness(amount_needed, offer, metrics)), offers
         )

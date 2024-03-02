@@ -4,13 +4,12 @@ import threading
 import time
 import pickle
 from src.core.data_generator import mk_instance_generator
-from src.core.msg_types import UIUpdate
 
 INCREMENT_MINUTES = 1
 REFRESH_RATE = 1
-NUM_HOUSES = 12
-SERVER_ADDRESS = ("localhost", 1234)
-UI_ADDRESS = ("localhost", 1235)
+NUM_HOUSES = 20
+SERVER_ADDRESS = ("localhost", 9405)
+UI_ADDRESS = ("localhost", 7283)
 START_DATE = datetime.datetime(2010, 1, 1, 10, 0, 0)
 END_DATE = datetime.datetime(2010, 1, 1, 19, 0, 0)
 DEVIATION = 0.1
@@ -18,32 +17,44 @@ DEVIATION = 0.1
 data_generator = mk_instance_generator(DEVIATION)
 
 
-def client_connection(conn, addr, results):
-    print(f"Connected by {addr}")
+def surplus_connection(conn, addr, t, results):
     gen, con = data_generator(t)
     conn.sendall(pickle.dumps({"type": "power", "generation": gen, "consumption": con}))
     data = pickle.loads(conn.recv(1024))
     results[addr] = data["surplus"]
 
 
+def trade_connection(conn, addr, offers, results):
+    conn.sendall(pickle.dumps({"type": "offers", "offers": offers}))
+    data = pickle.loads(conn.recv(1024))
+    results[addr] = data["trade"]
+
+
+def run_phase(conns, target, args):
+    threads = []
+    for conn, addr in conns:
+        t1 = threading.Thread(target=target, args=(conn, addr, *args))
+        t1.start()
+        threads.append(t1)
+    for t1 in threads:
+        t1.join()
+
+
 def moment(
     t, conns: list[tuple[socket.socket, tuple[str, int]]], ui_conn: socket.socket
 ):
-    print(f"Time: {t}")
     threads: list[threading.Thread] = []
     results: dict[tuple[str, int], float] = {}
-    for conn, addr in conns:
-        t1 = threading.Thread(target=client_connection, args=(conn, addr, results))
-        t1.start()
-        threads.append(t1)
-    print("Threads started")
-    for t1 in threads:
-        t1.join()
-    print("Threads finished")
-    ui_update: UIUpdate = {
+    run_phase(conns, surplus_connection, (t, results))
+    offers = list({addr: results[addr] for addr in results if results[addr] > 0}.items())
+    trades = {}
+    run_phase(conns, trade_connection, (offers, trades))
+    trades = {k: v for k, v in trades.items() if v is not None}
+    ui_update = {
         "type": "update",
         "time": t.strftime("%H:%M:%S"),
         "meters": results,
+        "trades": trades,
     }
     ui_conn.sendall(pickle.dumps(ui_update))
     print(results)
