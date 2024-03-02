@@ -6,14 +6,13 @@ import threading
 import socket
 import pickle
 
-WEB_UI_URL = "http://localhost:5173"  # TODO: add UI URL
-MODEL_PATH = "MODEL_PATH"  # TODO: add model path
+WEB_UI_URL = "http://localhost:3000"  # TODO: add UI URL
 ADDRESS = ("localhost", 6543)
 
 
 app = Flask(__name__)
 cors_options = {"origins": WEB_UI_URL}
-cors = CORS(app, resources={r"/predict": cors_options, r"/": cors_options})
+cors = CORS(app, resources={r"/next": cors_options, r"/": cors_options})
 
 
 def make_state_buffer():  # -> tuple[Callable[..., None], Callable[[], dict[str, Any]]]:

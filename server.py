@@ -6,7 +6,7 @@ import pickle
 from src.core.data_generator import mk_instance_generator
 
 INCREMENT_MINUTES = 1
-REFRESH_RATE = 1
+REFRESH_RATE = 0.2
 NUM_HOUSES = 20
 SERVER_ADDRESS = ("localhost", 9405)
 UI_ADDRESS = ("localhost", 6543)
