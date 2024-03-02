@@ -9,7 +9,7 @@ INCREMENT_MINUTES = 1
 REFRESH_RATE = 1
 NUM_HOUSES = 20
 SERVER_ADDRESS = ("localhost", 9405)
-UI_ADDRESS = ("localhost", 7283)
+UI_ADDRESS = ("localhost", 6543)
 START_DATE = datetime.datetime(2010, 1, 1, 10, 0, 0)
 END_DATE = datetime.datetime(2010, 1, 1, 19, 0, 0)
 DEVIATION = 0.1
@@ -46,18 +46,25 @@ def moment(
     threads: list[threading.Thread] = []
     results: dict[tuple[str, int], float] = {}
     run_phase(conns, surplus_connection, (t, results))
-    offers = list({addr: results[addr] for addr in results if results[addr] > 0}.items())
+    offers = list(
+        {addr: results[addr] for addr in results if results[addr] > 0}.items()
+    )
     trades = {}
     run_phase(conns, trade_connection, (offers, trades))
     trades = {k: v for k, v in trades.items() if v is not None}
+    meters = [
+        {
+            "id": ":".join(map(str, addr)),
+            "surplus": results[addr],
+            "in_trade": ":".join(map(str, trades[addr])) if addr in trades else None,
+        }
+        for addr in results
+    ]
     ui_update = {
-        "type": "update",
         "time": t.strftime("%H:%M:%S"),
-        "meters": results,
-        "trades": trades,
+        "meters": meters,
     }
     ui_conn.sendall(pickle.dumps(ui_update))
-    print(results)
 
 
 if __name__ == "__main__":
