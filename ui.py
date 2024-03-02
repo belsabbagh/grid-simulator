@@ -8,13 +8,6 @@ from src.core.types import UIUpdate
 ADDRESS = ("localhost", 7283)
 N = 20
 
-
-def trade(window: MainWindow.GridView, msg: UIUpdate) -> None:
-    window.clear_connections()
-    for m1, m2 in msg["trades"].items():
-        window.make_connection(m1, m2)
-
-
 def no_update(_window: MainWindow.GridView, _msg: UIUpdate) -> None:
     return None
 
@@ -22,11 +15,12 @@ def no_update(_window: MainWindow.GridView, _msg: UIUpdate) -> None:
 def update(window: MainWindow.GridView, msg: UIUpdate) -> None:
     window.update_timer_label(msg["time"])
     window.update_grid(msg["meters"])
-
+    window.clear_connections()
+    for m1, m2 in msg["trades"].items():
+        window.make_connection(m1, m2)
 
 ui_updates: dict[str, Callable[[MainWindow.GridView, UIUpdate], None]] = {
     "update": update,
-    "trade": trade,
 }
 
 
@@ -34,6 +28,7 @@ def update_ui(window: MainWindow.GridView, conn) -> None:
     while True:
         data: UIUpdate = pickle.loads(conn.recv(2048))
         ui_updates.get(data["type"], no_update)(window, data)
+
 
 if __name__ == "__main__":
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
