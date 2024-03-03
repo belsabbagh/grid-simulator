@@ -70,8 +70,8 @@ def generate_normal_random_parameters(means, deviations) -> list[float]:
 
 def mk_grid_state_generator():
 
-    means: list[float] = [0.4, 20, 239.696, 3.132, 900]
-    devs: list[float] = [0.1, 1, 1, 0.1, 10]
+    means: list[float] = [0.4, 20, 239.696, 3.132]
+    devs: list[float] = [0.1, 1, 1, 0.1]
 
     def generate_grid_state(t: dt.datetime):
         return generate_normal_random_parameters(means, devs)

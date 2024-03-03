@@ -9,7 +9,7 @@ def meter_mkthread(
     s: socket.socket, buf_size: int, trade_chooser: Callable
 ) -> Callable[..., threading.Thread]:
     choose = trade_chooser
-    
+
     def run() -> None:
         recv_stream: bytes = s.recv(buf_size)
         if not recv_stream:
@@ -19,6 +19,7 @@ def meter_mkthread(
         if data_type != "power":
             raise ValueError("Haven't received power data.")
         gen, con = data["generation"], data["consumption"]
+        grid_state = data["grid_state"]
         surplus = gen - con
         s.sendall(
             pickle.dumps(
@@ -31,12 +32,9 @@ def meter_mkthread(
         data = pickle.loads(recv_stream)
         if data["type"] != "offers":
             return
-        if not data["offers"]:
+        if not data["offers"] or surplus >= 0:
             s.sendall(pickle.dumps({"from": s.getsockname(), "trade": None}))
             return
-        if surplus > 0:
-            s.sendall(pickle.dumps({"from": s.getsockname(), "trade": None}))
-
         source, amount = random.choice(data["offers"])
         s.sendall(pickle.dumps({"from": s.getsockname(), "trade": source}))
 

@@ -4,15 +4,8 @@ from src.core.data_generator import generate_normal_random_parameters
 from src.core.optimizer import mk_predict_function
 import time
 from src.server import create_flask_state_buffer, make_state_buffer
-from src.core.util import date_range
+from src.core.util import date_range, fmt_grid_state
 
-PARAMS = [
-    "Grid load (GWh)",
-    "Grid temperature (C)",
-    "Voltage (V)",
-    "Global intensity (A)",
-    "Transaction amount (Wh)",
-]
 
 
 def make_collect_state(append_state):
@@ -33,7 +26,7 @@ def make_collect_state(append_state):
             efficiency, duration = predict_function(*parameters)
             state_data = {
                 "timestamp": t.strftime("%H:%M"),
-                "parameters": {key: value for key, value in zip(PARAMS, parameters)},
+                "parameters": fmt_grid_state(parameters),
                 "predictions": {
                     "Expected Efficiency": efficiency,
                     "Expected Duration (hr)": duration,

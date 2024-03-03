@@ -4,8 +4,8 @@ import threading
 import time
 import pickle
 
-from src.core.util import date_range
-from src.core.data_generator import mk_instance_generator
+from src.core.util import date_range, fmt_grid_state
+from src.core.data_generator import mk_grid_state_generator, mk_instance_generator
 from config import (
     DEVIATION,
     START_DATE,
@@ -18,11 +18,21 @@ from config import (
 )
 
 data_generator = mk_instance_generator(DEVIATION)
+grid_state_generator = mk_grid_state_generator()
 
 
-def surplus_connection(conn, addr, t, results):
+def surplus_connection(conn, addr, t, grid_state, results):
     gen, con = data_generator(t)
-    conn.sendall(pickle.dumps({"type": "power", "generation": gen, "consumption": con}))
+    conn.sendall(
+        pickle.dumps(
+            {
+                "type": "power",
+                "generation": gen,
+                "consumption": con,
+                "grid_state": grid_state,
+            }
+        )
+    )
     data = pickle.loads(conn.recv(1024))
     results[addr] = data["surplus"]
 
@@ -46,8 +56,9 @@ def run_phase(conns, target, args):
 def moment(
     t, conns: list[tuple[socket.socket, tuple[str, int]]], ui_conn: socket.socket
 ):
+    grid_state = grid_state_generator(t)
     results: dict[tuple[str, int], float] = {}
-    run_phase(conns, surplus_connection, (t, results))
+    run_phase(conns, surplus_connection, (t, grid_state, results))
     offers = list(
         {addr: results[addr] for addr in results if results[addr] > 0}.items()
     )
@@ -70,6 +81,7 @@ def moment(
     ui_update = {
         "time": t.strftime("%H:%M:%S"),
         "meters": meters,
+        "grid_state": fmt_grid_state(grid_state),
     }
     ui_conn.sendall(pickle.dumps(ui_update))
 
