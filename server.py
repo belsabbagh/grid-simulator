@@ -58,7 +58,7 @@ def moment(
         {
             "id": meter_display_ids[addr],
             "surplus": results[addr],
-            "in_trade": meter_display_ids[trades[addr]] if addr in trades else None,
+            "in_trade": meter_display_ids.get(trades.get(addr, None), "") if addr in trades else None,
         }
         for addr in results
     ]

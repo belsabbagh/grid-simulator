@@ -4,6 +4,7 @@ import socket
 from typing import Any, Callable
 import random
 
+
 class Meter:
     s: socket.socket
     trade_chooser: Callable
@@ -47,6 +48,9 @@ class Meter:
         if not data["offers"]:
             self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "trade": None}))
             return
+        if surplus > 0:
+            self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "trade": None}))
+
         source, amount = random.choice(data["offers"])
         self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "trade": source}))
 

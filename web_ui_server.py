@@ -22,8 +22,9 @@ def make_state_buffer():  # -> tuple[Callable[..., None], Callable[[], dict[str,
         """pop the first state from the buffer"""
         if not buffer:
             return None
-        return buffer.pop(0)
-
+        state = buffer.pop(0)
+        state["remaining"] = len(buffer)
+        return state
     return append_state, fetch_next_state
 
 
