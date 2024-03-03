@@ -4,15 +4,16 @@ import threading
 import time
 import pickle
 from src.core.data_generator import mk_instance_generator
-
-INCREMENT_MINUTES = 1
-REFRESH_RATE = 0.2
-NUM_HOUSES = 20
-SERVER_ADDRESS = ("localhost", 9405)
-UI_ADDRESS = ("localhost", 6543)
-START_DATE = datetime.datetime(2010, 1, 1, 10, 0, 0)
-END_DATE = datetime.datetime(2010, 1, 1, 19, 0, 0)
-DEVIATION = 0.1
+from config import (
+    DEVIATION,
+    START_DATE,
+    END_DATE,
+    UI_ADDRESS,
+    NUM_HOUSES,
+    INCREMENT_MINUTES,
+    REFRESH_RATE,
+    SERVER_ADDRESS,
+)
 
 data_generator = mk_instance_generator(DEVIATION)
 
@@ -54,11 +55,11 @@ def moment(
     trades = {k: v for k, v in trades.items() if v is not None}
     meters = [
         {
-            "id": ":".join(map(str, addr)),
+            "id": i,
             "surplus": results[addr],
             "in_trade": ":".join(map(str, trades[addr])) if addr in trades else None,
         }
-        for addr in results
+        for i, (addr, _) in enumerate(results.items(), 1)
     ]
     ui_update = {
         "time": t.strftime("%H:%M:%S"),

@@ -1,12 +1,10 @@
 import socket
-from typing import Literal
 from src.core.data_service.dht import create_dht
 from src.core.meter import Meter
 from src.core.optimizer import mk_choose_best_offers_function
+from config import SERVER_ADDRESS, NUM_HOUSES
 
-N = 20
 BUFFER_SIZE = 512
-SERVER_ADDRESS = ("localhost", 9405)
 
 
 def mksocket() -> socket.socket:
@@ -19,7 +17,7 @@ if __name__ == "__main__":
         "models/duration.h5",
         "models/grid-loss.h5",
     )
-    sockets = [mksocket() for _ in range(N)]
+    sockets = [mksocket() for _ in range(NUM_HOUSES)]
     for s in sockets:
         s.connect(SERVER_ADDRESS)
     socket_addrs = [s.getsockname() for s in sockets]

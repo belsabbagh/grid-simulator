@@ -5,10 +5,7 @@ from flask_cors import CORS
 import threading
 import socket
 import pickle
-
-WEB_UI_URL = "http://localhost:3000"  # TODO: add UI URL
-ADDRESS = ("localhost", 6543)
-
+from config import WEB_UI_URL, UI_SERVER_ADDRESS
 
 app = Flask(__name__)
 cors_options = {"origins": WEB_UI_URL}
@@ -47,7 +44,7 @@ def _():
 
 if __name__ == "__main__":
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(ADDRESS)
+        s.bind(UI_SERVER_ADDRESS)
         s.listen()
         print("UI server started")
         print("Waiting for `server.py` to start...")
