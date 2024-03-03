@@ -3,6 +3,8 @@ import socket
 import threading
 import time
 import pickle
+
+from src.core.util import date_range
 from src.core.data_generator import mk_instance_generator
 from config import (
     DEVIATION,
@@ -44,7 +46,6 @@ def run_phase(conns, target, args):
 def moment(
     t, conns: list[tuple[socket.socket, tuple[str, int]]], ui_conn: socket.socket
 ):
-    threads: list[threading.Thread] = []
     results: dict[tuple[str, int], float] = {}
     run_phase(conns, surplus_connection, (t, results))
     offers = list(
@@ -58,7 +59,11 @@ def moment(
         {
             "id": meter_display_ids[addr],
             "surplus": results[addr],
-            "in_trade": meter_display_ids.get(trades.get(addr, None), "") if addr in trades else None,
+            "in_trade": (
+                meter_display_ids.get(trades.get(addr, None), "")
+                if addr in trades
+                else None
+            ),
         }
         for addr in results
     ]
@@ -81,8 +86,9 @@ if __name__ == "__main__":
         for _ in range(NUM_HOUSES):
             conn, addr = s.accept()
             conns.append((conn, addr))
-        t = START_DATE
-        while t < END_DATE:
+        for t in date_range(
+            START_DATE, END_DATE, datetime.timedelta(minutes=INCREMENT_MINUTES)
+        ):
             moment(t, conns, ui_conn)
             t += datetime.timedelta(minutes=INCREMENT_MINUTES)
             time.sleep(REFRESH_RATE)

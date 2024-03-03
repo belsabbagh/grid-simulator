@@ -1,6 +1,5 @@
 import socket
-from src.core.data_service.dht import create_dht
-from src.core.meter import Meter
+from src.core.meter import meter_mkthread
 from src.core.optimizer import mk_choose_best_offers_function
 from config import SERVER_ADDRESS, NUM_HOUSES
 
@@ -20,13 +19,9 @@ if __name__ == "__main__":
     sockets = [mksocket() for _ in range(NUM_HOUSES)]
     for s in sockets:
         s.connect(SERVER_ADDRESS)
-    socket_addrs = [s.getsockname() for s in sockets]
-    dht_get, dht_put_fns = create_dht(socket_addrs)
-    meters = [
-        Meter(s, BUFFER_SIZE, trade_chooser) for s, dht_put in zip(sockets, dht_put_fns)
-    ]
+    meters = [meter_mkthread(s, BUFFER_SIZE,trade_chooser) for s in sockets]
     while True:
-        threads = [m.mkthread() for m in meters]
+        threads = [m() for m in meters]
         for t in threads:
             t.start()
         for t in threads:
