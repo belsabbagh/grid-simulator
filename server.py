@@ -53,13 +53,14 @@ def moment(
     trades = {}
     run_phase(conns, trade_connection, (offers, trades))
     trades = {k: v for k, v in trades.items() if v is not None}
+    meter_display_ids = {addr: i for i, addr in enumerate(results.keys(), 1)}
     meters = [
         {
-            "id": i,
+            "id": meter_display_ids[addr],
             "surplus": results[addr],
-            "in_trade": ":".join(map(str, trades[addr])) if addr in trades else None,
+            "in_trade": meter_display_ids[trades[addr]] if addr in trades else None,
         }
-        for i, (addr, _) in enumerate(results.items(), 1)
+        for addr in results
     ]
     ui_update = {
         "time": t.strftime("%H:%M:%S"),
