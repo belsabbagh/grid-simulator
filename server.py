@@ -1,95 +1,39 @@
 import datetime
-import pickle
-import socket
 import threading
 
-from config import (
-    DEVIATION,
+from src.presets import mk_default_run
+from src.server import create_flask_state_server, make_state_buffer
+from src.server.sim import make_simulation_server_state
+from src.config import (
     SERVER_ADDRESS,
     NUM_HOUSES,
-    UI_ADDRESS,
     START_DATE,
     END_DATE,
     INCREMENT_MINUTES,
     REFRESH_RATE,
+    WEB_UI_URL,
 )
-
-from src.core.util import fmt_grid_state
-from src.core.data_generator import mk_grid_state_generator, mk_instance_generator
-from src.server.sim import make_simulation_server
-
-data_generator = mk_instance_generator(DEVIATION)
-grid_state_generator = mk_grid_state_generator()
-
-
-def surplus_connection(conn, addr, t, grid_state, results):
-    gen, con = data_generator(t)
-    conn.sendall(
-        pickle.dumps(
-            {
-                "type": "power",
-                "generation": gen,
-                "consumption": con,
-                "grid_state": grid_state,
-            }
-        )
-    )
-    data = pickle.loads(conn.recv(1024))
-    results[addr] = data["surplus"]
-
-
-def trade_connection(conn, addr, offers, results):
-    conn.sendall(pickle.dumps({"type": "offers", "offers": offers}))
-    data = pickle.loads(conn.recv(1024))
-    results[addr] = data["trade"]
-
-
-def run_phase(conns, target, args):
-    threads = []
-    for conn, addr in conns:
-        t1 = threading.Thread(target=target, args=(conn, addr, *args))
-        t1.start()
-        threads.append(t1)
-    for t1 in threads:
-        t1.join()
-
-
-def moment(t, conns: list[tuple[socket.socket, tuple[str, int]]]):
-    grid_state = grid_state_generator(t)
-    results: dict[tuple[str, int], float] = {}
-    run_phase(conns, surplus_connection, (t, grid_state, results))
-    offers = list(
-        {addr: results[addr] for addr in results if results[addr] > 0}.items()
-    )
-    trades = {}
-    run_phase(conns, trade_connection, (offers, trades))
-    trades = {k: v for k, v in trades.items() if v is not None}
-    meter_display_ids = {addr: i for i, addr in enumerate(results.keys(), 1)}
-    meters = [
-        {
-            "id": meter_display_ids[addr],
-            "surplus": results[addr],
-            "in_trade": (
-                meter_display_ids.get(trades.get(addr, None), "")
-                if addr in trades
-                else None
-            ),
-        }
-        for addr in results
-    ]
-    return {
-        "time": t.strftime("%H:%M:%S"),
-        "meters": meters,
-        "grid_state": fmt_grid_state(grid_state),
-    }
 
 
 if __name__ == "__main__":
-    simulate = make_simulation_server(NUM_HOUSES, SERVER_ADDRESS, UI_ADDRESS)
-    simulate(
+    append_state, fetch_next_state = make_state_buffer()
+    simulate = make_simulation_server_state(NUM_HOUSES, SERVER_ADDRESS, append_state)
+    default_run = mk_default_run()
+    start_server = create_flask_state_server(
+        WEB_UI_URL,
+        fetch_next_state,
+    )
+    simulate_thread = threading.Thread(target=simulate, args=(
         START_DATE,
         END_DATE,
         datetime.timedelta(minutes=INCREMENT_MINUTES),
         REFRESH_RATE,
-        moment,
-    )
+        default_run,
+    ))
+    server_thread = threading.Thread(target=start_server)
+
+    simulate_thread.start()
+    server_thread.start()
+
+    simulate_thread.join()
+    server_thread.join()

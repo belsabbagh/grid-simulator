@@ -23,9 +23,8 @@ def make_state_buffer():
     return append_state, fetch_next_state
 
 
-def create_flask_state_buffer(
+def create_flask_state_server(
     web_ui_address,
-    collect_state,
     fetch_next_state,
     cors_endpoints=None,
 ) -> Callable[[], None]:
@@ -43,8 +42,6 @@ def create_flask_state_buffer(
         return jsonify(state)
 
     def start_server():
-        t = threading.Thread(target=collect_state)
-        t.start()
         app.run()
 
     return start_server
