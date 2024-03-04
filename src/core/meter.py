@@ -66,6 +66,5 @@ def mk_meters_runner(n, server_address):
                 t.start()
             for t in threads:
                 t.join()
-            print("Iteration finished")
 
     return meters_runner
