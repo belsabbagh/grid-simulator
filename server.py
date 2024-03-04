@@ -1,21 +1,22 @@
 import datetime
+import pickle
 import socket
 import threading
-import time
-import pickle
 
-from src.core.util import date_range, fmt_grid_state
-from src.core.data_generator import mk_grid_state_generator, mk_instance_generator
 from config import (
     DEVIATION,
+    SERVER_ADDRESS,
+    NUM_HOUSES,
+    UI_ADDRESS,
     START_DATE,
     END_DATE,
-    UI_ADDRESS,
-    NUM_HOUSES,
     INCREMENT_MINUTES,
     REFRESH_RATE,
-    SERVER_ADDRESS,
 )
+
+from src.core.util import fmt_grid_state
+from src.core.data_generator import mk_grid_state_generator, mk_instance_generator
+from src.server.sim import make_simulation_server
 
 data_generator = mk_instance_generator(DEVIATION)
 grid_state_generator = mk_grid_state_generator()
@@ -53,9 +54,7 @@ def run_phase(conns, target, args):
         t1.join()
 
 
-def moment(
-    t, conns: list[tuple[socket.socket, tuple[str, int]]], ui_conn: socket.socket
-):
+def moment(t, conns: list[tuple[socket.socket, tuple[str, int]]]):
     grid_state = grid_state_generator(t)
     results: dict[tuple[str, int], float] = {}
     run_phase(conns, surplus_connection, (t, grid_state, results))
@@ -78,29 +77,19 @@ def moment(
         }
         for addr in results
     ]
-    ui_update = {
+    return {
         "time": t.strftime("%H:%M:%S"),
         "meters": meters,
         "grid_state": fmt_grid_state(grid_state),
     }
-    ui_conn.sendall(pickle.dumps(ui_update))
 
 
 if __name__ == "__main__":
-    ui_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    ui_conn.connect(UI_ADDRESS)
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(SERVER_ADDRESS)
-        s.listen(NUM_HOUSES)
-        print("Server started")
-        conns: list[tuple[socket.socket, tuple[str, int]]] = []
-        print("Waiting to connect to meters...")
-        for _ in range(NUM_HOUSES):
-            conn, addr = s.accept()
-            conns.append((conn, addr))
-        for t in date_range(
-            START_DATE, END_DATE, datetime.timedelta(minutes=INCREMENT_MINUTES)
-        ):
-            moment(t, conns, ui_conn)
-            t += datetime.timedelta(minutes=INCREMENT_MINUTES)
-            time.sleep(REFRESH_RATE)
+    simulate = make_simulation_server(NUM_HOUSES, SERVER_ADDRESS, UI_ADDRESS)
+    simulate(
+        START_DATE,
+        END_DATE,
+        datetime.timedelta(minutes=INCREMENT_MINUTES),
+        REFRESH_RATE,
+        moment,
+    )
