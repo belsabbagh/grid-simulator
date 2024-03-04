@@ -18,7 +18,6 @@ def mk_select_random_offers_function(count: int = 5):
 
 
 def mk_predict_function(efficiency_model_path, duration_model_path, quality_model_path):
-    # Load models
     efficiency_model = load_model(efficiency_model_path)
     duration_model = load_model(duration_model_path)
     quality_model = load_model(quality_model_path)
@@ -28,7 +27,6 @@ def mk_predict_function(efficiency_model_path, duration_model_path, quality_mode
     if duration_model is None:
         raise Exception("Duration model was not loaded")
 
-    # Create predict function
     def predict_function(
         grid_load_gwh, grid_temp_c, voltage_v, global_intensity_A, transaction_amount_wh
     ) -> tuple[float, float]:
