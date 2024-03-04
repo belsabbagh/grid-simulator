@@ -2,7 +2,7 @@ import datetime
 
 
 INCREMENT_MINUTES = 1
-REFRESH_RATE = 0.2
+REFRESH_RATE = 0.1
 NUM_HOUSES = 32
 SERVER_ADDRESS = ("localhost", 9405)
 UI_ADDRESS = ("localhost", 6543)

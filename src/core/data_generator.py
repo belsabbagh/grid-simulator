@@ -74,6 +74,7 @@ def mk_grid_state_generator():
     devs: list[float] = [0.1, 1, 1, 0.1]
 
     def generate_grid_state(t: dt.datetime):
+        """It returns a list of 4 parameters: load, temperature, voltage, intensity in that order."""
         return generate_normal_random_parameters(means, devs)
 
     return generate_grid_state

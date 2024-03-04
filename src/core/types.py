@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TypedDict
+from typing import Callable, TypedDict
 
 
 class UIUpdate(TypedDict):
@@ -7,6 +7,7 @@ class UIUpdate(TypedDict):
     time: str
     meters: dict[tuple[str, int], float]
     trades: dict[tuple[str, int], tuple[str, int]]
+
 
 @dataclass
 class Offer:
@@ -35,9 +36,4 @@ class TradeBlock:
     nonce: int
 
 
-@dataclass
-class GridMetrics:
-    load: float
-    temperature: float
-    voltage: float
-    intensity: float
+TradeChooser = Callable[[float, list[Offer], list[float]], list[tuple[Offer, float]]]

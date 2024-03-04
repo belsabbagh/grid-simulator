@@ -1,10 +1,12 @@
+from typing import Callable
 import tensorflow as tf
 import numpy as np
 import random
 
 
 from src.core.transaction_quality.scoring import mk_calculate_transaction_score_function
-from src.core.types import Offer, GridMetrics
+from src.core.types import Offer, TradeChooser
+
 load_model = tf.keras.models.load_model
 
 
@@ -49,7 +51,7 @@ def mk_fitness_function(efficiency_model_path, duration_model_path, quality_mode
 
     calculate_transaction_score = mk_calculate_transaction_score_function()
 
-    def fitness(amount_needed, offer: Offer, metrics: GridMetrics) -> float:
+    def fitness(amount_needed, offer: Offer, metrics: list[float]) -> float:
         """This function should return a fitness score for the offer.
         - Higher efficiency should be better
         - Lower duration should be better
@@ -58,20 +60,18 @@ def mk_fitness_function(efficiency_model_path, duration_model_path, quality_mode
         - Lower amount offered - amount needed should be better
         """
         efficiency, duration = predict(
-            metrics.load,
-            metrics.temperature,
-            metrics.voltage,
-            metrics.intensity,
+            metrics[0],
+            metrics[1],
+            metrics[2],
+            metrics[3],
             offer.amount,
         )
         quality = calculate_transaction_score(offer.amount - amount_needed, duration)
-        selling_history = get_selling_history(offer.source)
-        participation_count = len(selling_history)
         params = (
             efficiency,
             duration,
             quality,
-            participation_count,
+            offer.participation_count,
             amount_needed,
             offer.amount,
         )
@@ -82,16 +82,15 @@ def mk_fitness_function(efficiency_model_path, duration_model_path, quality_mode
 
 def mk_choose_best_offers_function(
     efficiency_model_path, duration_model_path, quality_model_path, count: int = 5
-):
+)-> TradeChooser:
     fitness = mk_fitness_function(
         efficiency_model_path, duration_model_path, quality_model_path
     )
 
     def choose_best_offers_function(
-        amount_needed, offers, metrics: GridMetrics
+        amount_needed: float, offers: list[Offer], metrics: list[float]
     ) -> list[tuple[Offer, float]]:
         """This function should return the best offers from the list of offers and their scores."""
-        count = 5
         random_select = mk_select_random_offers_function(count)
         if len(offers) > count:
             offers = random_select(offers)
