@@ -19,8 +19,15 @@ def make_state_buffer():
         state = buffer.pop(0)
         state["remaining"] = len(buffer)
         return state
+    
+    def immutable_iterator():
+        for state in buffer:
+            yield state.copy()
 
-    return append_state, fetch_next_state
+    def clear_state():
+        buffer.clear()
+
+    return append_state, fetch_next_state, immutable_iterator, clear_state
 
 
 def create_flask_state_server(

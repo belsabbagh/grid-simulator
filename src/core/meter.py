@@ -5,11 +5,10 @@ import random
 from typing import Callable, Any
 
 from src.core.optimizer import mk_choose_best_offers_function
-from src.core.types import Offer, TradeChooser
 
 
 def meter_mkthread(
-    s: socket.socket, buf_size: int, trade_chooser: TradeChooser
+    s: socket.socket, buf_size: int, trade_chooser
 ) -> Callable[..., threading.Thread]:
     def run() -> None:
         recv_stream: bytes = s.recv(buf_size)
@@ -27,7 +26,7 @@ def meter_mkthread(
                 {"from": s.getsockname(), "surplus": surplus, "type": "surplus"}
             )
         )
-        recv_stream = s.recv(2048)
+        recv_stream = s.recv(8192)
         if not recv_stream:
             return
         data = pickle.loads(recv_stream)
@@ -37,9 +36,8 @@ def meter_mkthread(
             s.sendall(pickle.dumps({"from": s.getsockname(), "trade": None}))
             return
         result = trade_chooser(surplus, data["offers"], grid_state)
-        offer: Offer = result[0][0]
-        fitness: float = result[0][1]
-        s.sendall(pickle.dumps({"from": s.getsockname(), "trade": offer.source, "fitness": fitness}))
+        offer, fitness = result[0]
+        s.sendall(pickle.dumps({"from": s.getsockname(), "trade": offer['source'], "fitness": fitness}))
 
     def mkthread(args=None):
         if args is None:

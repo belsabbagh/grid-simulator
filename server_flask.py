@@ -16,7 +16,7 @@ from src.config import (
 
 
 if __name__ == "__main__":
-    append_state, fetch_next_state = make_state_buffer()
+    append_state, fetch_next_state, _,_ = make_state_buffer()
     simulate = make_simulation_server_state(NUM_HOUSES, SERVER_ADDRESS, append_state)
     default_run = mk_default_run()
     start_server = create_flask_state_server(
