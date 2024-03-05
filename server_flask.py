@@ -1,5 +1,6 @@
 import datetime
 import threading
+from timeit import default_timer
 
 from src.presets import mk_default_run
 from src.server import create_flask_state_server, make_state_buffer
@@ -16,6 +17,7 @@ from src.config import (
 
 
 if __name__ == "__main__":
+    init_start = default_timer()
     append_state, fetch_next_state, _,_ = make_state_buffer()
     simulate = make_simulation_server_state(NUM_HOUSES, SERVER_ADDRESS, append_state)
     default_run = mk_default_run()
@@ -31,7 +33,7 @@ if __name__ == "__main__":
         default_run,
     ))
     server_thread = threading.Thread(target=start_server)
-
+    print(f"Initialization took {(default_timer() - init_start):3} seconds.")
     simulate_thread.start()
     server_thread.start()
 
