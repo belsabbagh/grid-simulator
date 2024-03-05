@@ -6,7 +6,7 @@ import random
 
 from src.core.transaction_quality.scoring import mk_calculate_transaction_score_function
 
-load_model = tf.keras.models.load_model
+keras_load_model = tf.keras.models.load_model
 
 
 def mk_select_random_offers_function(count: int = 5):
@@ -16,7 +16,27 @@ def mk_select_random_offers_function(count: int = 5):
     return select_random_offers_function
 
 
-def mk_predict_function(efficiency_model_path, duration_model_path, quality_model_path):
+def load_model(model_path):
+    model = keras_load_model(model_path)
+
+    def predict(x):
+        return model.predict(x)
+
+    return predict
+
+
+def load_model_weights(model_path):
+    model = keras_load_model(model_path)
+    weights = model.get_weights()[0]
+
+    def predict(x):
+        return np.dot(weights, x)
+    
+    return predict
+
+def mk_predict_function(
+    efficiency_model_path, duration_model_path, quality_model_path, load_model
+):
     efficiency_model = load_model(efficiency_model_path)
     duration_model = load_model(duration_model_path)
     quality_model = load_model(quality_model_path)
@@ -30,9 +50,9 @@ def mk_predict_function(efficiency_model_path, duration_model_path, quality_mode
         grid_load_gwh, grid_temp_c, voltage_v, global_intensity_A, transaction_amount_wh
     ) -> tuple[float, float]:
         """The predict function returns a tuple of (efficiency, duration) with the measuring units being (ratio, hours)"""
-        grid_loss = efficiency_model.predict([[grid_load_gwh, grid_temp_c]])
+        grid_loss = efficiency_model([[grid_load_gwh, grid_temp_c]])
         efficiency = (grid_load_gwh - grid_loss[0][0]) / grid_load_gwh
-        duration = duration_model.predict(
+        duration = duration_model(
             [[voltage_v, global_intensity_A, efficiency, transaction_amount_wh]]
         )
         return efficiency, duration[0][0]
@@ -42,7 +62,7 @@ def mk_predict_function(efficiency_model_path, duration_model_path, quality_mode
 
 def mk_fitness_function(efficiency_model_path, duration_model_path, quality_model_path):
     predict = mk_predict_function(
-        efficiency_model_path, duration_model_path, quality_model_path
+        efficiency_model_path, duration_model_path, quality_model_path, load_model_weights
     )
     weights = (1, -1, 1, -1, 1, -1)
 
@@ -61,16 +81,16 @@ def mk_fitness_function(efficiency_model_path, duration_model_path, quality_mode
             metrics[1],
             metrics[2],
             metrics[3],
-            offer['amount'],
+            offer["amount"],
         )
-        quality = calculate_transaction_score(offer['amount'] - amount_needed, duration)
+        quality = calculate_transaction_score(offer["amount"] - amount_needed, duration)
         params = (
             efficiency,
             duration,
             quality,
-            offer['participation_count'],
+            offer["participation_count"],
             amount_needed,
-            offer['amount'],
+            offer["amount"],
         )
         return np.dot(weights, params)
 

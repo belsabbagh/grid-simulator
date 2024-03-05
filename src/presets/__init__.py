@@ -53,7 +53,6 @@ def mk_default_run():
         ]
         trades = {}
         run_phase(conns, trade_connection, (offers, trades))
-        trades = {k: v for k, v in trades.items() if v is not None}
         meter_display_ids = {addr: i for i, addr in enumerate(results.keys(), 1)}
         meters = [
             {

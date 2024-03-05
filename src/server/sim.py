@@ -23,6 +23,7 @@ def make_simulation_server_state(n, server_address, append_state):
     def simulate(start_date, end_date, datetime_delta, refresh_rate, moment):
         for t in date_range(start_date, end_date, datetime_delta):
             state = moment(t, conns)
+            print(f"Moment {t} has passed.")
             append_state(state)
             time.sleep(refresh_rate)
 

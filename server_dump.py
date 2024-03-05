@@ -1,5 +1,6 @@
 import datetime
 import json
+from timeit import default_timer
 from src.presets import mk_default_run
 from src.server import make_state_buffer
 from src.server.sim import make_simulation_server_state
@@ -14,9 +15,11 @@ from src.config import (
 
 
 if __name__ == "__main__":
+    init_start = default_timer()
     append_state, fetch_next_state, immutable_iter, _ = make_state_buffer()
     simulate = make_simulation_server_state(NUM_HOUSES, SERVER_ADDRESS, append_state)
     default_run = mk_default_run()
+    print(f"Initialization took {(default_timer() - init_start):3} seconds.")
     start = datetime.datetime.now()
     simulate(
         START_DATE,
