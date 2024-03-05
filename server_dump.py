@@ -1,5 +1,7 @@
 import datetime
 import json
+import os
+import pickle
 from timeit import default_timer
 from src.presets import mk_default_run
 from src.server import make_state_buffer
@@ -12,7 +14,7 @@ from src.config import (
     INCREMENT_MINUTES,
     REFRESH_RATE,
 )
-
+from src.util.dumper import mk_dumper
 
 if __name__ == "__main__":
     init_start = default_timer()
@@ -30,20 +32,18 @@ if __name__ == "__main__":
     )
     end = datetime.datetime.now()
     print(f"Simulation took {end - start}")
-    with open("server_dump.json", "w") as f:
-        json.dump(
-            {
-                "debug": {
-                    "time_taken": f"{end - start}",
-                },
-                "parameters": {
-                    "START_DATE": START_DATE.strftime("%Y-%m-%d %H:%M:%S"),
-                    "END_DATE": END_DATE.strftime("%Y-%m-%d %H:%M:%S"),
-                    "INCREMENT_MINUTES": INCREMENT_MINUTES,
-                },
-                "states": list(immutable_iter()),
+    dump = mk_dumper() # The dumper knows how to dump the format you want. you just write the file name as .json or .pkl
+    dump(
+        {
+            "debug": {
+                "time_taken": f"{end - start}",
             },
-            f,
-            default=str,
-            indent=2,
-        )
+            "parameters": {
+                "START_DATE": START_DATE.strftime("%Y-%m-%d %H:%M:%S"),
+                "END_DATE": END_DATE.strftime("%Y-%m-%d %H:%M:%S"),
+                "INCREMENT_MINUTES": INCREMENT_MINUTES,
+            },
+            "states": list(immutable_iter()),
+        },
+        f"out/server_dump{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.pkl",
+    )
