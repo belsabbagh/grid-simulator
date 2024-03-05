@@ -47,12 +47,12 @@ def mk_default_run():
         grid_state = grid_state_generator(t)
         results: dict[tuple[str, int], float] = {}
         run_phase(conns, surplus_connection, (t, grid_state, results))
-        offers = list(
-            {addr: results[addr] for addr in results if results[addr] > 0}.items()
-        )
+        offers = [
+            {"source": addr, "amount": results[addr], "participation_count": 1}
+            for addr in results if results[addr] > 0
+        ]
         trades = {}
         run_phase(conns, trade_connection, (offers, trades))
-        trades = {k: v for k, v in trades.items() if v is not None}
         meter_display_ids = {addr: i for i, addr in enumerate(results.keys(), 1)}
         meters = [
             {
