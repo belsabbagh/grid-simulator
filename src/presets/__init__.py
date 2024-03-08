@@ -3,6 +3,7 @@ import socket
 import threading
 from typing import Any, Callable
 from src.config import NUM_METERS
+from src.core.comms import make_msg_body
 from src.core.optimizer import mk_choose_best_offers_function
 
 
@@ -32,7 +33,13 @@ def meter_mkthread(
         surplus = gen - con
         s.sendall(
             pickle.dumps(
-                {"from": s.getsockname(), "surplus": surplus, "type": "surplus"}
+                make_msg_body(
+                    s.getsockname(),
+                    "surplus",
+                    surplus=surplus,
+                    generation=gen,
+                    consumption=con,
+                )
             )
         )
         recv_stream = s.recv(offers_msg_size)
