@@ -1,10 +1,6 @@
 from typing import Callable
 from flask import Flask, jsonify
 from flask_cors import CORS
-import threading
-import socket
-
-app = Flask(__name__)
 
 
 def make_state_buffer():
@@ -19,7 +15,7 @@ def make_state_buffer():
         state = buffer.pop(0)
         state["remaining"] = len(buffer)
         return state
-    
+
     def immutable_iterator():
         for state in buffer:
             yield state.copy()
@@ -30,23 +26,32 @@ def make_state_buffer():
     return append_state, fetch_next_state, immutable_iterator, clear_state
 
 
-def create_flask_state_server(
-    web_ui_address,
+def create_flask_server(
+    record,
     fetch_next_state,
     cors_endpoints=None,
 ) -> Callable[[], None]:
+    app = Flask(__name__)
     if cors_endpoints is None:
-        cors_endpoints = ["/next"]
+        cors_endpoints = [
+            r"/*/*",
+        ]
 
-    cors_resources = {
-        endpoint: {"origins": web_ui_address} for endpoint in cors_endpoints
-    }
+    cors_resources = {endpoint: {"origins": "*"} for endpoint in cors_endpoints}
     cors = CORS(app, resources=cors_resources)
 
-    @app.route("/next", methods=["GET"])
-    def _():
+    @app.route("/realtime/next", methods=["GET"])
+    def realtime_next_state():
         state = fetch_next_state()
         return jsonify(state)
+
+    @app.route("/playback/parameters", methods=["GET"])
+    def playback_parameters():
+        return jsonify({"parameters": record["parameters"]})
+
+    @app.route("/playback/states/<int:idx>", methods=["GET"])
+    def playback_states(idx):
+        return jsonify({"state": record["states"][idx]})
 
     def start_server():
         app.run()
