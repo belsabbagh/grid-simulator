@@ -1,5 +1,11 @@
 from dataclasses import dataclass
-from typing import Callable, TypedDict
+from typing import Callable, TypeVar
+import datetime as dt
+
+R = TypeVar("R")
+
+TimeGenerator = Callable[[dt.datetime], R]
+
 
 @dataclass
 class Trade:
