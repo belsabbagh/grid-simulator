@@ -16,13 +16,11 @@ from src.config import (
 
 if __name__ == "__main__":
     init_start = default_timer()
-    record_path = "out/runs/server_dump20240308T204322.pkl"
-    with open(record_path, "rb") as f:
-        record = pickle.load(f)
+    record_path = "out/runs"
     append_state, fetch_next_state, _,_ = make_state_buffer()
     simulate = make_simulation_server(NUM_METERS, SERVER_ADDRESS, append_state)
     start_server = create_flask_server(
-        record,
+        record_path,
         fetch_next_state,
     )
     simulate_thread = threading.Thread(target=simulate, args=(
@@ -34,8 +32,8 @@ if __name__ == "__main__":
     server_thread = threading.Thread(target=start_server)
     init_time = default_timer() - init_start
     print(f"Initialization took {init_time:3} seconds.")
-    simulate_thread.start()
+    # simulate_thread.start()
     server_thread.start()
 
-    simulate_thread.join()
+    # simulate_thread.join()
     server_thread.join()
