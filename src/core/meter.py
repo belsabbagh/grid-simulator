@@ -1,192 +1,116 @@
-import pickle
 import threading
 import socket
-from typing import Any, Callable
-import random
+import pickle
+
+from src.core.util.comms import make_msg_body, make_sockets_handler, listen_for_duration
 
 
-class Meter:
-    s: socket.socket
-    trade_chooser: Callable
+def mk_meter(
+    s: socket.socket, dht_nodes_iter, blockchain_record, blockchain_fetch, trade_chooser
+):
+    meter_addr = s.getsockname()
+    dt = None
+    surplus = 0
+    grid_state = [0, 0, 0, 0]
+    trade = None
 
-    def __init__(
-        self,
-        s: socket.socket,
-        buf_size: int,
-        trade_chooser: Callable,
-    ) -> None:
-        self.s = s
-        self.buffer_size = buf_size
-        self.trade_chooser = trade_chooser
+    def _handle_input(data):
+        nonlocal dt, surplus, grid_state
+        dt = data["datetime"]
+        surplus = data["generation"] - data["consumption"]
+        grid_state = data["grid_state"]
 
-    def mkthread(self, args=None):
-        if args is None:
-            args = ()
-        return threading.Thread(target=self.run, args=args)
+    def _broadcast_surplus():
+        pass
 
-    def run(self):
-        recv_stream: bytes = self.s.recv(self.buffer_size)
-        if not recv_stream:
-            return
-        data: dict[str, Any] = pickle.loads(recv_stream)
-        data_type = data["type"]
-        if data_type != "power":
-            raise ValueError("Haven't received power data.")
-        gen, con = data["generation"], data["consumption"]
-        surplus = gen - con
-        self.s.sendall(
-            pickle.dumps(
-                {"from": self.s.getsockname(), "surplus": surplus, type: "surplus"}
-            )
-        )
-        recv_stream = self.s.recv(2048)
-        if not recv_stream:
-            return
-        data = pickle.loads(recv_stream)
-        if data["type"] != "offers":
-            return
-        if not data["offers"]:
-            self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "trade": None}))
-            return
-        if surplus > 0:
-            self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "trade": None}))
+    def _choose_offer():
+        offers = []  # offers will be fetched from the dht
+        result = trade_chooser(surplus, offers, grid_state)
+        add_conn, _, send_to, _, _, concurrent_recv, _ = make_sockets_handler()
+        for offer, fitness in result:
+            addr = offer["source"]
+            add_conn(addr)
+            send_to(addr, make_msg_body(meter_addr, "power_request", fitness=fitness))
+        response, msg = concurrent_recv(1024, 10)
+        if response is not None:
+            if msg["status"] == "accept":
+                return offer
 
-        source, amount = random.choice(data["offers"])
-        self.s.sendall(pickle.dumps({"from": self.s.getsockname(), "trade": source}))
-
-    def is_connected(self) -> bool:
-        return self.s.fileno() != -1
-
-
-class OldMeter:
-    def __init__(self, meter_id):
-        self.meter_id = meter_id
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.connect(("localhost", 5000))
-        self.s.sendall(bytes(str(self.meter_id), "utf-8"))
-        self.port = eval(self.s.recv(1024).decode("utf-8"))["init_port"]
-        self.consumption = 0
-        self.generated = 0
-        self.taken = 0
-        self.given = 0
-        self.status = "none"
-        self.log = {}
-        self.curr_epoch = 0
-        self.curr_log = {}
-        self.curr_actions = []
-
-    def update_metrics(self, data):
-        self.consumption = data["consumption"]
-        self.generated = data["generated"]
-
-    def detect_power_consumption(self):
-        print("Detecting power consumption")
-        difference = (self.consumption + self.given) - (self.generated + self.taken)
-        if difference > 0:
-            print(f"House {self.meter_id} needs power")
-            data = {"meter_id": self.meter_id, "power": difference}
-            self.s.sendall(bytes(str(data), "utf-8"))
-            self.status = "deficit"
-
-        elif difference < 0:
-            print(f"House {self.meter_id} has surplus power")
-            data = {"meter_id": self.meter_id, "power": difference}
-            self.s.sendall(bytes(str(data), "utf-8"))
-            self.status = "surplus"
-
-    def wait_for_power(self):
-        try:
-            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server_socket.bind(("localhost", self.port))
-            while True:
-                server_socket.listen()
-                conn, addr = server_socket.accept()
-                data = conn.recv(1024)
-                data = eval(data.decode("utf-8"))
-                if not data:
-                    break
-                type = data["type"]
-                if type == "power":
-                    if self.status != "deficit":
-                        return
-                    amount = data["amount"]
-                    meter_id = data["meter_id"]
-                    print(f"Meter: {meter_id} sent {amount} power")
-                    self.taken += amount
-        except:
-            pass
-
-    def give_power(self, amount, ip, port):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((ip, port))
-        if self.status == "surplus":
-            if amount > self.generated - self.consumption:
-                print(
-                    f"Meter {self.meter_id} has {self.generated - self.consumption} power"
-                )
-                amount = self.generated - self.consumption
-            data = {"meter_id": self.meter_id, "amount": amount, "type": "power"}
-            s.sendall(bytes(str(data), "utf-8"))
-            self.given += amount
-
-    def clear_for_next_epoch(self):
-        self.taken = 0
-        self.generated = 0
-        self.consumption = 0
-        self.given = 0
-        self.status = "none"
-        self.curr_actions = []
-
-    def listen(self):
-        while True:
-            try:
-                curr_action = "none"
-                data = self.s.recv(1024)
-                data = eval(data.decode("utf-8"))
-
-                if not data:
-                    break
-
-                print(f"Meter {self.meter_id} received data: {data}")
-
-                if data["epoch"]:
-                    if data["epoch"] != self.curr_epoch:
-                        self.clear_for_next_epoch()
-                        self.curr_epoch = data["epoch"]
-                elif data["type"] == "give_power":
-                    self.give_power(data["amount"], data["ip"], data["port"])
-                    curr_action = "give_power"
-                elif data["type"] == "update":
-                    self.update_metrics(data)
-                    curr_action = "update"
-
-                print(
-                    f"Meter {self.meter_id}: Consumption: {self.consumption}, Generated: {self.generated}, Taken: {self.taken}"
-                )
-                print(f"Meter {self.meter_id}: Current Actions: {self.curr_actions}")
-
-                self.detect_power_consumption()
-                self.curr_log = {
-                    "meter_id": self.meter_id,
-                    "consumption": self.consumption,
-                    "generated": self.generated,
-                    "taken": self.taken,
-                    "actions": self.curr_actions,
-                }
-                self.curr_actions.append(curr_action)
-                if self.curr_epoch in self.log:
-                    self.curr_log["actions"] = (
-                        self.log[self.curr_epoch]["actions"] + self.curr_log["actions"]
-                    )
-                    self.log[self.curr_epoch] = self.curr_log
-                else:
-                    self.log[self.curr_epoch] = self.curr_log
-            except:
+    def _handle_requests():
+        """Receive requests from other meters."""
+        messages = listen_for_duration(s, 1024, 10)
+        sockets_index = {c.getpeername(): c for c in messages.keys()}
+        _, close, send_to, _, sockets_iter, _, _ = make_sockets_handler(sockets_index)
+        requests = {c.getpeername(): pickle.loads(messages[c]) for c in messages}
+        conn = max(requests, key=lambda x: requests[x]["fitness"])
+        send_to(conn, make_msg_body(meter_addr, "power_response", status="accept"))
+        close(conn)
+        for addr, c in sockets_iter():
+            if c.fileno() == -1:
                 continue
+            send_to(addr, make_msg_body(meter_addr, "power_response", status="reject"))
+            c.close()
 
-    def start(self):
-        thread = threading.Thread(target=self.listen)
-        thread2 = threading.Thread(target=self.wait_for_power)
-        thread.start()
-        thread2.start()
-        return thread, thread2
+    def _handle_surplus_positive():
+        _broadcast_surplus()
+        _handle_requests()
+
+    def _handle_trade(source: tuple[str, int]):
+        nonlocal trade
+        trade = source
+
+    def _handle_surplus_negative():
+        offer = _choose_offer()
+        if offer is not None:
+            _handle_trade(offer["source"])
+
+    surplus_handlers = [_handle_surplus_negative, _handle_surplus_positive]
+
+    def _handle_surplus():
+        while True:
+            surplus_handlers[int(surplus > 0)]()
+
+    def _listen_for_input():
+        while True:
+            data = pickle.loads(s.recv(1024))
+            if data["type"] == "power":
+                _handle_input(data)
+
+    def _fetch_state():
+        return {
+            "timestamp": dt,
+            "address": meter_addr,
+            "surplus": surplus,
+            "trade": trade,
+        }
+
+    def meter() -> None:
+        input_thread = threading.Thread(target=_listen_for_input)
+        input_thread.start()
+        surplus_thread = threading.Thread(target=_handle_surplus)
+        surplus_thread.start()
+
+    return meter, _fetch_state
+
+
+def mk_meters_handler(meters_dict):
+    def get_start(addr):
+        return meters_dict[addr][0]
+
+    threads = [threading.Thread(target=get_start(addr)) for addr in meters_dict]
+
+    def get_fetch_state_fn(addr):
+        return meters_dict[addr][1]
+
+    def start_threads():
+        for t in threads:
+            t.start()
+
+    def join_threads():
+        for t in threads:
+            t.join()
+
+    def fetch_state():
+        return {addr: get_fetch_state_fn(addr)() for addr in meters_dict}
+
+    return start_threads, join_threads, fetch_state
