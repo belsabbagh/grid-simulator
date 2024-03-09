@@ -1,26 +1,25 @@
 import datetime
 import threading
-
-from src.presets import mk_default_run
-from src.server import create_flask_state_server, make_state_buffer
-from src.server.sim import make_simulation_server_state
+from timeit import default_timer
+from src.server import create_flask_server
+from src.core.util.buffer import make_buffer
+from src.simulators import persistent
 from src.config import (
     SERVER_ADDRESS,
-    NUM_HOUSES,
+    NUM_METERS,
     START_DATE,
     END_DATE,
     INCREMENT_MINUTES,
     REFRESH_RATE,
-    WEB_UI_URL,
 )
 
 
 if __name__ == "__main__":
-    append_state, fetch_next_state, _,_ = make_state_buffer()
-    simulate = make_simulation_server_state(NUM_HOUSES, SERVER_ADDRESS, append_state)
-    default_run = mk_default_run()
-    start_server = create_flask_state_server(
-        WEB_UI_URL,
+    init_start = default_timer()
+    append_state, fetch_next_state, _,_ = make_buffer()
+    simulate = persistent.make_simulate(NUM_METERS, SERVER_ADDRESS, append_state)
+    start_server = create_flask_server(
+        "out/runs",
         fetch_next_state,
     )
     simulate_thread = threading.Thread(target=simulate, args=(
@@ -28,10 +27,9 @@ if __name__ == "__main__":
         END_DATE,
         datetime.timedelta(minutes=INCREMENT_MINUTES),
         REFRESH_RATE,
-        default_run,
     ))
     server_thread = threading.Thread(target=start_server)
-
+    print(f"Initialization took {(default_timer() - init_start):3} seconds.")
     simulate_thread.start()
     server_thread.start()
 
