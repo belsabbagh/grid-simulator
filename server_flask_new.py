@@ -1,7 +1,6 @@
 import datetime
 import threading
 from timeit import default_timer
-
 from src.server import create_flask_server
 from src.core.util.buffer import make_buffer
 from src.simulators import persistent
