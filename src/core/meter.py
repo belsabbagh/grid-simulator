@@ -2,7 +2,7 @@ import threading
 import socket
 import pickle
 
-from src.core.comms import make_msg_body, make_sockets_handler, listen_for_duration
+from src.core.util.comms import make_msg_body, make_sockets_handler, listen_for_duration
 
 
 def mk_meter(

@@ -1,6 +1,5 @@
-import datetime as dt
-
 import pandas as pd
+import datetime as dt
 GRID_STATE_PARAMS = [
     "Grid load (GWh)",
     "Grid temperature (C)",
@@ -9,12 +8,8 @@ GRID_STATE_PARAMS = [
 ]
 
 def date_range(start: dt.datetime, end: dt.datetime, delta: dt.timedelta):
-    current = start
-    while current < end:
-        yield current
-        current += delta
-
-def fmt_grid_state(grid_state: list[float]):
+    yield from pd.date_range(start, end, freq=delta)
+def fmt_grid_state(grid_state: list[float]) -> dict[str, float]:
     return {key: value for key, value in zip(GRID_STATE_PARAMS, grid_state)}
 
 

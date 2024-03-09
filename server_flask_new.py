@@ -2,8 +2,9 @@ import datetime
 import threading
 from timeit import default_timer
 
-from src.server import create_flask_server, make_state_buffer
-from src.server.sim import make_persistent_simulation_server
+from src.server import create_flask_server
+from src.core.util.buffer import make_buffer
+from src.simulators import persistent
 from src.config import (
     SERVER_ADDRESS,
     NUM_METERS,
@@ -17,8 +18,8 @@ from src.config import (
 
 if __name__ == "__main__":
     init_start = default_timer()
-    append_state, fetch_next_state, _,_ = make_state_buffer()
-    simulate = make_persistent_simulation_server(NUM_METERS, SERVER_ADDRESS, append_state)
+    append_state, fetch_next_state, _,_ = make_buffer()
+    simulate = persistent.make_simulate(NUM_METERS, SERVER_ADDRESS, append_state)
     start_server = create_flask_server(
         WEB_UI_URL,
         fetch_next_state,
