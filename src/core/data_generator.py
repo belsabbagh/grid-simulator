@@ -4,7 +4,7 @@ import pvlib
 
 import pandas as pd
 
-from src.core.types import TimeGenerator
+from src.types import TimeGenerator
 
 TIME_FORMAT = "%H:%M:%S"
 

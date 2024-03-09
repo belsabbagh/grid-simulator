@@ -7,6 +7,31 @@ from typing import Iterable
 
 from pyparsing import Any
 
+def send_and_recv_thread(conn, addr, message, result, results_loader, buf_size):
+    conn.sendall(message)
+    result[addr] = results_loader(conn.recv(buf_size))
+
+
+def send_and_recv_async(conns_addrs, messages, results, results_loader, buf_size=1024):
+    """Warning! This function breaks when the number of connections is too high."""
+    threads = []
+    for conn, addr in conns_addrs:
+        thread = threading.Thread(
+            target=send_and_recv_thread,
+            args=(conn, addr, messages[addr], results, results_loader, buf_size),
+        )
+        thread.start()
+        threads.append(thread)
+
+    for thread in threads:
+        thread.join()
+
+
+def send_and_recv_sync(conns_addrs, messages, results, results_loader, buf_size=1024):
+    for conn, addr in conns_addrs:
+        conn.sendall(messages[addr])
+        results[addr] = results_loader(conn.recv(buf_size))
+
 
 def connect_sockets(sockets, addr):
     try:
