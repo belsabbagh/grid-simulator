@@ -61,9 +61,7 @@ def create_flask_server(
 
     simulate_thread = make_simulate_thread()
     record = None
-    record_id = None
 
-    @app.route("/realtime", methods=["GET"])
     @app.route("/realtime/next", methods=["GET"])
     def realtime_next_state():
         state = fetch_next_state()
@@ -87,9 +85,7 @@ def create_flask_server(
         nonlocal record
         if record is None:
             return jsonify({"error": "No record loaded"})
-        if record_id == run_id:
-            return jsonify(record["states"][idx])
-        raise ValueError("Record not loaded")
+        return jsonify(record["states"][idx])
 
     def start_server():
         simulate_thread.start()
