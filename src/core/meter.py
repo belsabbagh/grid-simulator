@@ -1,70 +1,116 @@
 import threading
 import socket
 import pickle
-import random
-from typing import Callable, Any
 
-from src.core.optimizer import mk_choose_best_offers_function
+from src.core.util.comms import make_msg_body, make_sockets_handler, listen_for_duration
 
 
-def meter_mkthread(
-    s: socket.socket, buf_size: int, trade_chooser
-) -> Callable[..., threading.Thread]:
-    def run() -> None:
-        recv_stream: bytes = s.recv(buf_size)
-        if not recv_stream:
-            return
-        data: dict[str, Any] = pickle.loads(recv_stream)
-        data_type = data["type"]
-        if data_type != "power":
-            raise ValueError("Haven't received power data.")
-        gen, con = data["generation"], data["consumption"]
+def mk_meter(
+    s: socket.socket, dht_nodes_iter, blockchain_record, blockchain_fetch, trade_chooser
+):
+    meter_addr = s.getsockname()
+    dt = None
+    surplus = 0
+    grid_state = [0, 0, 0, 0]
+    trade = None
+
+    def _handle_input(data):
+        nonlocal dt, surplus, grid_state
+        dt = data["datetime"]
+        surplus = data["generation"] - data["consumption"]
         grid_state = data["grid_state"]
-        surplus = gen - con
-        s.sendall(
-            pickle.dumps(
-                {"from": s.getsockname(), "surplus": surplus, "type": "surplus"}
-            )
-        )
-        recv_stream = s.recv(8192)
-        if not recv_stream:
-            return
-        data = pickle.loads(recv_stream)
-        if data["type"] != "offers":
-            return
-        if not data["offers"] or surplus >= 0:
-            s.sendall(pickle.dumps({"from": s.getsockname(), "trade": None}))
-            return
-        result = trade_chooser(surplus, data["offers"], grid_state)
-        offer, fitness = result[0]
-        s.sendall(pickle.dumps({"from": s.getsockname(), "trade": offer['source'], "fitness": fitness}))
 
-    def mkthread(args=None):
-        if args is None:
-            args = ()
-        return threading.Thread(target=run, args=args)
+    def _broadcast_surplus():
+        pass
 
-    return mkthread
+    def _choose_offer():
+        offers = []  # offers will be fetched from the dht
+        result = trade_chooser(surplus, offers, grid_state)
+        add_conn, _, send_to, _, _, concurrent_recv, _ = make_sockets_handler()
+        for offer, fitness in result:
+            addr = offer["source"]
+            add_conn(addr)
+            send_to(addr, make_msg_body(meter_addr, "power_request", fitness=fitness))
+        response, msg = concurrent_recv(1024, 10)
+        if response is not None:
+            if msg["status"] == "accept":
+                return offer
 
+    def _handle_requests():
+        """Receive requests from other meters."""
+        messages = listen_for_duration(s, 1024, 10)
+        sockets_index = {c.getpeername(): c for c in messages.keys()}
+        _, close, send_to, _, sockets_iter, _, _ = make_sockets_handler(sockets_index)
+        requests = {c.getpeername(): pickle.loads(messages[c]) for c in messages}
+        conn = max(requests, key=lambda x: requests[x]["fitness"])
+        send_to(conn, make_msg_body(meter_addr, "power_response", status="accept"))
+        close(conn)
+        for addr, c in sockets_iter():
+            if c.fileno() == -1:
+                continue
+            send_to(addr, make_msg_body(meter_addr, "power_response", status="reject"))
+            c.close()
 
+    def _handle_surplus_positive():
+        _broadcast_surplus()
+        _handle_requests()
 
-def mk_meters_runner(n, server_address):
-    trade_chooser = mk_choose_best_offers_function(
-        "models/grid-loss.h5",
-        "models/duration.h5",
-        "models/grid-loss.h5",
-    )
-    sockets = [socket.socket(socket.AF_INET, socket.SOCK_STREAM) for _ in range(n)]
-    for s in sockets:
-        s.connect(server_address)
-    meters = [meter_mkthread(s, 512, trade_chooser) for s in sockets]
+    def _handle_trade(source: tuple[str, int]):
+        nonlocal trade
+        trade = source
 
-    def meters_runner():
+    def _handle_surplus_negative():
+        offer = _choose_offer()
+        if offer is not None:
+            _handle_trade(offer["source"])
+
+    surplus_handlers = [_handle_surplus_negative, _handle_surplus_positive]
+
+    def _handle_surplus():
         while True:
-            threads = [m() for m in meters]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
+            surplus_handlers[int(surplus > 0)]()
 
-    return meters_runner
+    def _listen_for_input():
+        while True:
+            data = pickle.loads(s.recv(1024))
+            if data["type"] == "power":
+                _handle_input(data)
+
+    def _fetch_state():
+        return {
+            "timestamp": dt,
+            "address": meter_addr,
+            "surplus": surplus,
+            "trade": trade,
+        }
+
+    def meter() -> None:
+        input_thread = threading.Thread(target=_listen_for_input)
+        input_thread.start()
+        surplus_thread = threading.Thread(target=_handle_surplus)
+        surplus_thread.start()
+
+    return meter, _fetch_state
+
+
+def mk_meters_handler(meters_dict):
+    def get_start(addr):
+        return meters_dict[addr][0]
+
+    threads = [threading.Thread(target=get_start(addr)) for addr in meters_dict]
+
+    def get_fetch_state_fn(addr):
+        return meters_dict[addr][1]
+
+    def start_threads():
+        for t in threads:
+            t.start()
+
+    def join_threads():
+        for t in threads:
+            t.join()
+
+    def fetch_state():
+        return {addr: get_fetch_state_fn(addr)() for addr in meters_dict}
+
+    return start_threads, join_threads, fetch_state

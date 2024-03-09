@@ -1,7 +1,7 @@
 import datetime
 from timeit import default_timer
 from src.core.util.buffer import make_buffer
-from src.simulators import synchronous
+from src.simulators.datagen import make_simulate
 from src.config import (
     SERVER_ADDRESS,
     NUM_METERS,
@@ -12,10 +12,11 @@ from src.config import (
 )
 from src.core.util.dumper import mk_dumper
 
+
 if __name__ == "__main__":
     init_start = default_timer()
     append_state, fetch_next_state, immutable_iter, _ = make_buffer()
-    simulate = synchronous.make_simulate(NUM_METERS, SERVER_ADDRESS, append_state)
+    simulate = make_simulate(1200, SERVER_ADDRESS, append_state)
     print(f"Initialization took {(default_timer() - init_start):3} seconds.")
     start = datetime.datetime.now()
     simulate(
@@ -36,7 +37,6 @@ if __name__ == "__main__":
                 "START_DATE": START_DATE.strftime("%Y-%m-%d %H:%M:%S"),
                 "END_DATE": END_DATE.strftime("%Y-%m-%d %H:%M:%S"),
                 "INCREMENT_MINUTES": INCREMENT_MINUTES,
-                "NUM_METERS": NUM_METERS,
             },
             "states": list(immutable_iter()),
         },

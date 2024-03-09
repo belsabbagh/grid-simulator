@@ -1,4 +1,4 @@
-from src.core.data_service.dht import create_dht, add_node, update_finger_table, create_node
+from src.core.data_services.dht import create_dht, add_node, update_finger_table, create_node
 
 def test_create_dht():
     dht = create_dht()
