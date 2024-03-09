@@ -2,13 +2,54 @@ import os
 import pickle
 from flask import Flask, jsonify
 from flask_cors import CORS
+import datetime
+import threading
+from timeit import default_timer
+
+from src.core.util.buffer import make_buffer
+from src.simulators import synchronous
+from src.config import (
+    SERVER_ADDRESS,
+    NUM_METERS,
+    START_DATE,
+    END_DATE,
+    INCREMENT_MINUTES,
+    REFRESH_RATE,
+)
 
 
 def create_flask_server(
     runs_folder,
-    fetch_next_state,
     cors_endpoints=None,
 ):
+    append_state, fetch_next_state, _, _ = make_buffer()
+
+    def make_simulate_thread():
+        init_start = default_timer()
+        simulate = synchronous.make_simulate(NUM_METERS, SERVER_ADDRESS, append_state)
+
+        simulate_thread = threading.Thread(
+            target=simulate,
+            args=(
+                START_DATE,
+                END_DATE,
+                datetime.timedelta(minutes=INCREMENT_MINUTES),
+                REFRESH_RATE,
+            ),
+        )
+        init_time = default_timer() - init_start
+        print(f"Initialization took {init_time:3} seconds.")
+        simulate_thread = threading.Thread(
+            target=simulate,
+            args=(
+                START_DATE,
+                END_DATE,
+                datetime.timedelta(minutes=INCREMENT_MINUTES),
+                REFRESH_RATE,
+            ),
+        )
+        return simulate_thread
+
     app = Flask(__name__)
     if cors_endpoints is None:
         cors_endpoints = [
@@ -18,8 +59,11 @@ def create_flask_server(
     cors_resources = {endpoint: {"origins": "*"} for endpoint in cors_endpoints}
     cors = CORS(app, resources=cors_resources)
 
+    simulate_thread = make_simulate_thread()
     record = None
+    record_id = None
 
+    @app.route("/realtime", methods=["GET"])
     @app.route("/realtime/next", methods=["GET"])
     def realtime_next_state():
         state = fetch_next_state()
@@ -43,9 +87,12 @@ def create_flask_server(
         nonlocal record
         if record is None:
             return jsonify({"error": "No record loaded"})
-        return jsonify(record["states"][idx])
+        if record_id == run_id:
+            return jsonify(record["states"][idx])
+        raise ValueError("Record not loaded")
 
     def start_server():
-        app.run()
+        simulate_thread.start()
+        threading.Thread(target=app.run).start()
 
     return start_server

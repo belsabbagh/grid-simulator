@@ -12,7 +12,6 @@ from src.config import (
     END_DATE,
     INCREMENT_MINUTES,
     REFRESH_RATE,
-    WEB_UI_URL,
 )
 
 
@@ -21,7 +20,7 @@ if __name__ == "__main__":
     append_state, fetch_next_state, _,_ = make_buffer()
     simulate = persistent.make_simulate(NUM_METERS, SERVER_ADDRESS, append_state)
     start_server = create_flask_server(
-        WEB_UI_URL,
+        "out/runs",
         fetch_next_state,
     )
     simulate_thread = threading.Thread(target=simulate, args=(
