@@ -2,7 +2,8 @@ import threading
 import socket
 import pickle
 
-from src.core.util.comms import make_msg_body, make_sockets_handler, listen_for_duration
+from src.core.util.comms import make_sockets_handler, listen_for_duration
+from src.core.util.fmt import make_msg_body
 
 
 def mk_meter(
@@ -31,10 +32,9 @@ def mk_meter(
             addr = offer["source"]
             add_conn(addr)
             send_to(addr, make_msg_body(meter_addr, "power_request", fitness=fitness))
-        response, msg = concurrent_recv(1024, 10)
-        if response is not None:
-            if msg["status"] == "accept":
-                return offer
+        responder, msg = concurrent_recv(1024, 10)
+        if responder is not None and msg is not None:
+            return pickle.loads(msg)
 
     def _handle_requests():
         """Receive requests from other meters."""

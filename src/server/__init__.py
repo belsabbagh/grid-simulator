@@ -1,5 +1,6 @@
 import os
 import pickle
+from typing import Callable, Optional, List
 from flask import Flask, jsonify
 from flask_cors import CORS
 import datetime
@@ -19,9 +20,15 @@ from src.config import (
 
 
 def create_flask_server(
-    runs_folder,
-    cors_endpoints=None,
-):
+    runs_folder: str,
+) -> Callable[[], None]:
+    """Create a Flask server that serves the next state of a real-time simulation and the recorded runs in the specified folder.
+
+    Args:
+        runs_folder (str): The folder where the recorded runs are stored.
+    Returns:
+        Callable[[], None]: A function that starts the server.
+    """
     append_state, fetch_next_state, _, _ = make_buffer()
 
     def make_simulate_thread():
@@ -51,12 +58,8 @@ def create_flask_server(
         return simulate_thread
 
     app = Flask(__name__)
-    if cors_endpoints is None:
-        cors_endpoints = [
-            r"/*/*",
-        ]
 
-    cors_resources = {endpoint: {"origins": "*"} for endpoint in cors_endpoints}
+    cors_resources = {r"/*/*": {"origins": "*"}}
     cors = CORS(app, resources=cors_resources)
 
     simulate_thread = make_simulate_thread()

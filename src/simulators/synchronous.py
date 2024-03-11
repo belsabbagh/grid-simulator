@@ -9,10 +9,10 @@ from src.config import DEVIATION, NUM_METERS
 from src.core.optimizer import mk_choose_best_offers_function
 from src.types import SimulateFunction
 from src.core.util import comms
-from src.core.util.comms import make_msg_body
 from src.core.data_generator import mk_grid_state_generator, mk_instance_generator
 
-from src.core.util import date_range, fmt_grid_state
+from src.core.util.fmt import fmt_grid_state, make_msg_body
+from src.core.util.timing import date_range
 
 
 def calc_sizeof_offers_msg(n):

@@ -2,7 +2,7 @@ import time
 from src.config import DEVIATION
 from src.core.data_generator import mk_grid_state_generator, mk_instance_generator
 from src.types import SimulateFunction
-from src.core.util import date_range
+from src.core.util.timing import date_range
 
 
 def make_simulate(n, _, append_state) -> SimulateFunction:

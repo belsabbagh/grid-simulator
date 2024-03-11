@@ -6,8 +6,9 @@ import time
 import socket
 from src.config import DEVIATION
 from src.types import SimulateFunction
-from src.core.util import date_range
-from src.core.util.comms import connect_sockets, make_msg_body
+from src.core.util.timing import date_range
+from src.core.util.comms import connect_sockets
+from src.core.util.fmt import make_msg_body
 from src.core.data_generator import mk_grid_state_generator, mk_instance_generator
 from src.core.meter import mk_meter, mk_meters_handler
 from src.core.optimizer import mk_choose_best_offers_function
