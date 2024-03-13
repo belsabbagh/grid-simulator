@@ -18,6 +18,7 @@ from src.config import (
     REFRESH_RATE,
 )
 
+
 def get_run(runs_folder: str, run_id: str) -> Optional[dict]:
     """Get a run from the specified folder.
 
@@ -43,7 +44,11 @@ def get_run_meta(runs_folder: str, run_id: str) -> Optional[dict]:
             return None
         parameters = run["parameters"]
         del run
-        return {"id": run_id, "created": datetime.datetime.fromtimestamp(ctime), "parameters": parameters}
+        return {
+            "id": run_id,
+            "created": datetime.datetime.fromtimestamp(ctime),
+            "parameters": parameters,
+        }
     except FileNotFoundError:
         return None
 

@@ -10,6 +10,8 @@ SimulateFunction = Callable[
     [dt.datetime, dt.datetime, dt.timedelta, float], None
 ]
 
+SocketAddress = tuple[str, int]
+
 
 @dataclass
 class Trade:
