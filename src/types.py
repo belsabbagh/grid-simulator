@@ -7,8 +7,10 @@ R = TypeVar("R")
 TimeGenerator = Callable[[dt.datetime], R]
 
 SimulateFunction = Callable[
-    [dt.datetime, dt.datetime, dt.timedelta, float], None
+    [int, dt.datetime, dt.datetime, dt.timedelta, float], None
 ]
+
+SocketAddress = tuple[str, int]
 
 
 @dataclass

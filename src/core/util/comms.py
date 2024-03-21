@@ -7,6 +7,8 @@ from typing import Iterable
 
 from pyparsing import Any
 
+from src.types import SocketAddress
+
 def send_and_recv_thread(conn, addr, message, result, results_loader, buf_size):
     conn.sendall(message)
     result[addr] = results_loader(conn.recv(buf_size))
@@ -43,7 +45,7 @@ def connect_sockets(sockets, addr):
         ) from e
 
 
-def connect_to(addr: tuple[str, int]) -> socket.socket:
+def connect_to(addr: SocketAddress) -> socket.socket:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(addr)
     return s
@@ -125,29 +127,29 @@ def concurrent_recv_duration(
 
 
 def make_sockets_handler(init=None):
-    sockets: dict[tuple[str, int], socket.socket] = init or {}
+    sockets: dict[SocketAddress, socket.socket] = init or {}
 
-    def _connect_to(addr: tuple[str, int]) -> None:
+    def _connect_to(addr: SocketAddress) -> None:
         s = connect_to(addr)
         sockets[addr] = s
 
-    def _close_connection(addr: tuple[str, int]) -> None:
+    def _close_connection(addr: SocketAddress) -> None:
         s = sockets[addr]
         close_connection(s)
         del sockets[addr]
 
-    def _send_data(addr: tuple[str, int], data: Any) -> None:
+    def _send_data(addr: SocketAddress, data: Any) -> None:
         s = sockets[addr]
         send_data(s, data)
 
-    def _recv_data(addr: tuple[str, int], buf_size: int, timeout: int) -> Any:
+    def _recv_data(addr: SocketAddress, buf_size: int, timeout: int) -> Any:
         s = sockets[addr]
         return recv_data(s, buf_size, timeout)
 
     def sockets_iterator():
         yield from sockets.items()
 
-    def _concurrent_recv(buf_size: int, timeout: int) -> tuple[tuple[str, int], Any]:
+    def _concurrent_recv(buf_size: int, timeout: int) -> tuple[SocketAddress, Any]:
         s, data = concurrent_recv(
             map(lambda x: x[1], sockets_iterator()), buf_size, timeout
         )
@@ -156,7 +158,7 @@ def make_sockets_handler(init=None):
 
     def _concurrent_recv_duration(
         buf_size: int, duration: int
-    ) -> dict[tuple[str, int], Any]:
+    ) -> dict[SocketAddress, Any]:
         received_data = concurrent_recv_duration(
             map(lambda x: x[1], sockets_iterator()), buf_size, duration
         )
