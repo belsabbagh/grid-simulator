@@ -33,6 +33,9 @@ def make_trade_handler():
         """This function executes all trades."""
         for source in trades:
             execute_trade(source, duration, efficiency)
+        for source in list(trades.keys()):
+            if trades[source][1] <= 0:
+                del trades[source]
 
     def get_trade(source: SocketAddress) -> Optional[tuple[SocketAddress, float]]:
         return trades.get(source, None)
