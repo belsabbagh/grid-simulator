@@ -119,7 +119,7 @@ def make_simulate(n, server_address, append_state) -> SimulateFunction:
             start_date, end_date, datetime_delta, DEVIATION
         )
         grid_state_generator = mk_grid_state_generator()
-        add_trade, trades_iter, get_trade, execute_trade, execute_all_trades = (
+        add_trade, trades_iter, get_trade, execute_trade = (
             trade_handler.make_trade_handler()
         )
         for t in date_range(start_date, end_date, datetime_delta):
@@ -177,7 +177,8 @@ def make_simulate(n, server_address, append_state) -> SimulateFunction:
                 }
                 for addr in results
             ]
-            execute_all_trades(datetime_delta, 1)
+            for buyer, (src, amnt) in trades_iter():
+                execute_trade(buyer, datetime_delta, grid_state[2], grid_state[3])
             print(f"Moment {t} has passed.")
             append_state(
                 {
