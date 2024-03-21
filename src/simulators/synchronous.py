@@ -99,22 +99,22 @@ def mk_meters_runner(n, server_address):
     return meters_runner
 
 
-def make_simulate(n, server_address, append_state) -> SimulateFunction:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(server_address)
-        s.listen(n)
-        print("Server started")
-        conns: list[tuple[socket.socket, SocketAddress]] = []
-        print("Waiting to connect to meters...")
-        meters_runner = mk_meters_runner(n, server_address)
-        meters_thread = threading.Thread(target=meters_runner)
-        meters_thread.daemon = True
-        meters_thread.start()
-        for _ in range(n):
-            conn, addr = s.accept()
-            conns.append((conn, addr))
+def make_simulate(server_address, append_state) -> SimulateFunction:
 
-    def simulate(start_date, end_date, datetime_delta, refresh_rate):
+    def simulate(n, start_date, end_date, datetime_delta, refresh_rate):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(server_address)
+            s.listen(n)
+            print("Server started")
+            conns: list[tuple[socket.socket, SocketAddress]] = []
+            print("Waiting to connect to meters...")
+            meters_runner = mk_meters_runner(n, server_address)
+            meters_thread = threading.Thread(target=meters_runner)
+            meters_thread.daemon = True
+            meters_thread.start()
+            for _ in range(n):
+                conn, addr = s.accept()
+                conns.append((conn, addr))
         data_generator = mk_instance_generator(
             start_date, end_date, datetime_delta, DEVIATION
         )
