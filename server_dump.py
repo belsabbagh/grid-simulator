@@ -15,10 +15,11 @@ from src.core.util.dumper import mk_dumper
 if __name__ == "__main__":
     init_start = default_timer()
     append_state, fetch_next_state, immutable_iter, _ = make_buffer()
-    simulate = synchronous.make_simulate(NUM_METERS, SERVER_ADDRESS, append_state)
+    simulate = synchronous.make_simulate(SERVER_ADDRESS, append_state)
     print(f"Initialization took {(default_timer() - init_start):3} seconds.")
     start = datetime.datetime.now()
     simulate(
+        NUM_METERS,
         START_DATE,
         END_DATE,
         datetime.timedelta(minutes=INCREMENT_MINUTES),

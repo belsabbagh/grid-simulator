@@ -3,3 +3,6 @@ pandas==2.1.4
 tensorflow
 matplotlib
 seaborn
+pvlib
+flask
+flask-cors
