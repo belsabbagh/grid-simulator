@@ -40,7 +40,6 @@ def get_run_meta(runs_folder: str, run_id: str) -> Optional[dict]:
         if run is None:
             return None
         parameters = run["parameters"]
-        del parameters["INCREMENT_MINUTES"]
         del run
         return {
             "id": run_id,
@@ -80,7 +79,12 @@ def create_flask_server(
         nonlocal running
         running = True
         start = datetime.datetime.now()
-        simulate(num_meters, start_date, end_date, increment, 0)
+        try:
+            simulate(num_meters, start_date, end_date, increment, 0)
+        except Exception as e:
+            print(e)
+        finally:
+            running = False
         end = datetime.datetime.now()
         dump = (
             mk_dumper()
@@ -99,7 +103,6 @@ def create_flask_server(
             },
             f"out/runs/server_dump{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.pkl",
         )
-        running = False
 
     @app.route("/runs", methods=["GET"])
     def playback_runs():

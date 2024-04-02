@@ -3,7 +3,7 @@ from typing import Generator, Optional
 from src.types import SocketAddress
 
 
-def energy_transfer_amount(duration:int, intensity:float, voltage:float) -> float:
+def energy_transfer_amount(duration:float, intensity:float, voltage:float) -> float:
     return duration * intensity * voltage
 
 
@@ -17,7 +17,9 @@ def make_trade_handler():
     def trades_iter() -> (
         Generator[tuple[SocketAddress, tuple[SocketAddress, float]], None, None]
     ):
-        yield from trades.items()
+        keys_cp, values_cp = trades.copy(), trades.copy()
+        for k, v in values_cp.items():
+            yield k, v
 
     def execute_trade(
         buyer: SocketAddress, duration: datetime.timedelta, voltage: float, intensity: float
@@ -28,7 +30,7 @@ def make_trade_handler():
 
         source, amount = trades[buyer]
 
-        new_amount = amount - energy_transfer_amount(efficiency, duration.total_seconds(), intensity, voltage)
+        new_amount = amount - energy_transfer_amount(duration.total_seconds(), intensity, voltage)
         if new_amount < 0:
             del trades[buyer]
         
