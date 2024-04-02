@@ -4,3 +4,5 @@ tensorflow
 matplotlib
 seaborn
 pvlib
+flask
+flask-cors

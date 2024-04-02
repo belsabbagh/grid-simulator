@@ -1,4 +1,3 @@
-from crypt import methods
 import os
 import pickle
 from typing import Callable, Optional
@@ -83,7 +82,9 @@ def create_flask_server(
         start = datetime.datetime.now()
         simulate(num_meters, start_date, end_date, increment, 0)
         end = datetime.datetime.now()
-        dump = mk_dumper() # The dumper knows how to dump the format you want. you just write the file name as .json or .pkl
+        dump = (
+            mk_dumper()
+        )  # The dumper knows how to dump the format you want. you just write the file name as .json or .pkl
         dump(
             {
                 "debug": {
@@ -99,7 +100,7 @@ def create_flask_server(
             f"out/runs/server_dump{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.pkl",
         )
         running = False
-        
+
     @app.route("/runs", methods=["GET"])
     def playback_runs():
         return jsonify(
@@ -110,7 +111,7 @@ def create_flask_server(
                 ]
             }
         )
-        
+
     @app.route("/runs/running", methods=["GET"])
     def is_running():
         return jsonify({"running": running})
@@ -121,16 +122,25 @@ def create_flask_server(
         if request.json is None:
             raise ValueError("Request is None.")
         if running:
-            return jsonify({"status": "failed", "message": "A run is already in progress."})
+            return jsonify(
+                {"status": "failed", "message": "A run is already in progress."}
+            )
         num_meters = int(request.json["numMeters"])
         start_date = datetime.datetime.fromisoformat(request.json["startDate"])
         end_date = datetime.datetime.fromisoformat(request.json["endDate"])
-        simulate_thread = threading.Thread(target=run, args=(num_meters, start_date, end_date, datetime.timedelta(minutes=INCREMENT_MINUTES)))
+        simulate_thread = threading.Thread(
+            target=run,
+            args=(
+                num_meters,
+                start_date,
+                end_date,
+                datetime.timedelta(minutes=INCREMENT_MINUTES),
+            ),
+        )
         init_time = default_timer() - init_start
         simulate_thread.start()
         print(f"Initialization took {init_time:3} seconds.")
         return jsonify({"status": "started", "init_time": init_time})
-
 
     @app.route("/runs/<string:run_id>", methods=["GET"])
     def playback_parameters(run_id):
