@@ -27,10 +27,10 @@ def load_model(model_path):
 
 def load_model_weights(model_path):
     model = keras_load_model(model_path)
-    weights = model.get_weights()[0]
+    w = model.get_weights()[0]
 
     def predict(x):
-        return np.dot(weights, x)
+        return np.dot(w, x)
     
     return predict
 
@@ -60,11 +60,12 @@ def mk_predict_function(
     return predict_function
 
 
-def mk_fitness_function(efficiency_model_path, duration_model_path, quality_model_path):
+def mk_fitness_function(efficiency_model_path, duration_model_path, quality_model_path, weights=None):
     predict = mk_predict_function(
         efficiency_model_path, duration_model_path, quality_model_path, load_model_weights
     )
-    weights = (1, -1, 1, -1, 1, -1)
+    if weights is None:
+        weights = (1, -1, 1, -1, 1, -1)
 
     calculate_transaction_score = mk_calculate_transaction_score_function()
 
@@ -98,10 +99,10 @@ def mk_fitness_function(efficiency_model_path, duration_model_path, quality_mode
 
 
 def mk_choose_best_offers_function(
-    efficiency_model_path, duration_model_path, quality_model_path, count: int = 5
+    efficiency_model_path, duration_model_path, quality_model_path, count: int = 5, weights=None
 ):
     fitness = mk_fitness_function(
-        efficiency_model_path, duration_model_path, quality_model_path
+        efficiency_model_path, duration_model_path, quality_model_path, weights
     )
 
     def choose_best_offers_function(

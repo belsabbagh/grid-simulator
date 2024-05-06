@@ -77,12 +77,8 @@ def meter_mkthread(
     return mkthread
 
 
-def mk_meters_runner(n, server_address):
-    trade_chooser = mk_choose_best_offers_function(
-        "models/grid-loss.h5",
-        "models/duration.h5",
-        "models/grid-loss.h5",
-    )
+def mk_meters_runner(n, server_address, trade_chooser):
+
     sockets = [socket.socket(socket.AF_INET, socket.SOCK_STREAM) for _ in range(n)]
     for s in sockets:
         s.connect(server_address)
@@ -99,29 +95,35 @@ def mk_meters_runner(n, server_address):
     return meters_runner
 
 
-def make_simulate(n, server_address, append_state) -> SimulateFunction:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(server_address)
-        s.listen(n)
-        print("Server started")
-        conns: list[tuple[socket.socket, tuple[str, int]]] = []
-        print("Waiting to connect to meters...")
-        meters_runner = mk_meters_runner(n, server_address)
-        meters_thread = threading.Thread(target=meters_runner)
-        meters_thread.daemon = True
-        meters_thread.start()
-        for _ in range(n):
-            conn, addr = s.accept()
-            conns.append((conn, addr))
+def make_simulate(server_address, append_state) -> SimulateFunction:
 
-    def simulate(start_date, end_date, datetime_delta, refresh_rate):
+    def simulate(n, start_date, end_date, datetime_delta, refresh_rate, optimization_weights=None):
+        trade_chooser = mk_choose_best_offers_function(
+            "models/grid-loss.h5",
+            "models/duration.h5",
+            "models/grid-loss.h5",
+            weights=optimization_weights
+        )
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(server_address)
+            s.listen(n)
+            print("Server started")
+            conns: list[tuple[socket.socket, SocketAddress]] = []
+            print("Waiting to connect to meters...")
+            meters_runner = mk_meters_runner(n, server_address, trade_chooser)
+            meters_thread = threading.Thread(target=meters_runner)
+            meters_thread.daemon = True
+            meters_thread.start()
+            for _ in range(n):
+                conn, addr = s.accept()
+                conns.append((conn, addr))
         data_generator = mk_instance_generator(
             start_date, end_date, datetime_delta, DEVIATION
         )
         grid_state_generator = mk_grid_state_generator()
         for t in date_range(start_date, end_date, datetime_delta):
             grid_state = grid_state_generator(t)
-            results: dict[tuple[str, int], float] = {}
+            surplus: dict[SocketAddress, float] = {}
             messages = {}
             for _, addr in conns:
                 gen, con = data_generator(t)
@@ -136,12 +138,12 @@ def make_simulate(n, server_address, append_state) -> SimulateFunction:
                     )
                 )
             comms.send_and_recv_sync(
-                conns, messages, results, lambda x: pickle.loads(x)["surplus"]
+                conns, messages, surplus, lambda x: pickle.loads(x)["surplus"]
             )
             offers = [
-                {"source": addr, "amount": results[addr], "participation_count": 1}
-                for addr in results
-                if results[addr] > 0
+                {"source": addr, "amount": surplus[addr], "participation_count": 1}
+                for addr in surplus
+                if surplus[addr] > 0
             ]
             messages = {}
             for _, addr in conns:
@@ -152,18 +154,29 @@ def make_simulate(n, server_address, append_state) -> SimulateFunction:
             comms.send_and_recv_sync(
                 conns, messages, trades, lambda x: pickle.loads(x)["trade"]
             )
-            meter_display_ids = {addr: i for i, addr in enumerate(results.keys(), 1)}
+            results = {}
+            for trade in trades:
+                buyer = trade
+                source = trades[trade]
+                if source is None:
+                    continue
+                amount = list(filter(lambda x: x["source"] == source, offers))[0][
+                    "amount"
+                ]
+                results[buyer] = amount
+            meter_display_ids = {addr: i for i, addr in enumerate(surplus.keys(), 1)}
             meters = [
                 {
                     "id": meter_display_ids[addr],
-                    "surplus": results[addr],
+                    "surplus": surplus[addr],
+                    "transferred": results.get(addr, 0),
                     "in_trade": (
                         meter_display_ids.get(trades.get(addr, None), "")
                         if addr in trades
                         else None
                     ),
                 }
-                for addr in results
+                for addr in surplus
             ]
             print(f"Moment {t} has passed.")
             append_state(
