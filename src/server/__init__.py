@@ -1,22 +1,20 @@
 import os
 import pickle
 from typing import Callable, Optional
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import datetime
 import threading
 from timeit import default_timer
 
 from src.core.util.buffer import make_buffer
+from src.core.util.dumper import mk_dumper
 from src.simulators import synchronous
 from src.config import (
     SERVER_ADDRESS,
-    NUM_METERS,
-    START_DATE,
-    END_DATE,
     INCREMENT_MINUTES,
-    REFRESH_RATE,
 )
+
 
 def get_run(runs_folder: str, run_id: str) -> Optional[dict]:
     """Get a run from the specified folder.
@@ -43,7 +41,11 @@ def get_run_meta(runs_folder: str, run_id: str) -> Optional[dict]:
             return None
         parameters = run["parameters"]
         del run
-        return {"id": run_id, "created": datetime.datetime.fromtimestamp(ctime), "parameters": parameters}
+        return {
+            "id": run_id,
+            "created": datetime.datetime.fromtimestamp(ctime),
+            "parameters": parameters,
+        }
     except FileNotFoundError:
         return None
 
@@ -58,45 +60,49 @@ def create_flask_server(
     Returns:
         Callable[[], None]: A function that starts the server.
     """
-    append_state, fetch_next_state, _, _ = make_buffer()
-
-    def make_simulate_thread():
-        init_start = default_timer()
-        simulate = synchronous.make_simulate(NUM_METERS, SERVER_ADDRESS, append_state)
-
-        simulate_thread = threading.Thread(
-            target=simulate,
-            args=(
-                START_DATE,
-                END_DATE,
-                datetime.timedelta(minutes=INCREMENT_MINUTES),
-                REFRESH_RATE,
-            ),
-        )
-        init_time = default_timer() - init_start
-        print(f"Initialization took {init_time:3} seconds.")
-        simulate_thread = threading.Thread(
-            target=simulate,
-            args=(
-                START_DATE,
-                END_DATE,
-                datetime.timedelta(minutes=INCREMENT_MINUTES),
-                REFRESH_RATE,
-            ),
-        )
-        return simulate_thread
+    append_state, fetch_next_state, immutable_iter, _ = make_buffer()
 
     app = Flask(__name__)
     cors_resources = {r"/*/*": {"origins": "*"}}
     cors = CORS(app, resources=cors_resources)
-
-    simulate_thread = make_simulate_thread()
+    running = False
     record = None
+
+    simulate = synchronous.make_simulate(SERVER_ADDRESS, append_state)
 
     @app.route("/realtime/next", methods=["GET"])
     def realtime_next_state():
         state = fetch_next_state()
         return jsonify(state)
+
+    def run(num_meters, start_date, end_date, increment):
+        nonlocal running
+        running = True
+        start = datetime.datetime.now()
+        try:
+            simulate(num_meters, start_date, end_date, increment, 0)
+        except Exception as e:
+            print(e)
+        finally:
+            running = False
+        end = datetime.datetime.now()
+        dump = (
+            mk_dumper()
+        )  # The dumper knows how to dump the format you want. you just write the file name as .json or .pkl
+        dump(
+            {
+                "debug": {
+                    "time_taken": f"{end - start}",
+                },
+                "parameters": {
+                    "START_DATE": start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                    "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                    "NUM_METERS": num_meters,
+                },
+                "states": list(immutable_iter()),
+            },
+            f"out/runs/server_dump{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.pkl",
+        )
 
     @app.route("/runs", methods=["GET"])
     def playback_runs():
@@ -109,12 +115,43 @@ def create_flask_server(
             }
         )
 
+    @app.route("/runs/running", methods=["GET"])
+    def is_running():
+        return jsonify({"running": running})
+
+    @app.route("/runs/start", methods=["POST"])
+    def start_run():
+        init_start = default_timer()
+        if request.json is None:
+            raise ValueError("Request is None.")
+        if running:
+            return jsonify(
+                {"status": "failed", "message": "A run is already in progress."}
+            )
+        num_meters = int(request.json["numMeters"])
+        start_date = datetime.datetime.fromisoformat(request.json["startDate"])
+        end_date = datetime.datetime.fromisoformat(request.json["endDate"])
+        simulate_thread = threading.Thread(
+            target=run,
+            args=(
+                num_meters,
+                start_date,
+                end_date,
+                datetime.timedelta(minutes=INCREMENT_MINUTES),
+            ),
+        )
+        init_time = default_timer() - init_start
+        simulate_thread.start()
+        print(f"Initialization took {init_time:3} seconds.")
+        return jsonify({"status": "started", "init_time": init_time})
+
     @app.route("/runs/<string:run_id>", methods=["GET"])
     def playback_parameters(run_id):
         nonlocal record
         record = get_run(runs_folder, run_id)
         if record is None:
             raise FileNotFoundError(f"Run {run_id} not found.")
+        record["parameters"]["INCREMENT_MINUTES"] = INCREMENT_MINUTES
         return jsonify({"parameters": record["parameters"]})
 
     @app.route("/runs/<string:run_id>/states/<int:idx>", methods=["GET"])
@@ -125,7 +162,6 @@ def create_flask_server(
         return jsonify(record["states"][idx])
 
     def start_server():
-        simulate_thread.start()
-        threading.Thread(target=app.run).start()
+        app.run()
 
     return start_server

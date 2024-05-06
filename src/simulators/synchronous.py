@@ -1,15 +1,15 @@
 import pickle
 import socket
 import threading
-import datetime as dt
 import time
 import socket
 from typing import Any, Callable
+
 from src.config import DEVIATION, NUM_METERS
+from src.core import trade_handler
 from src.core.optimizer import mk_choose_best_offers_function
-from src.types import SimulateFunction
+from src.types import SimulateFunction, SocketAddress
 from src.core.util import comms
-from src.core.util.comms import make_msg_body
 from src.core.data_generator import mk_grid_state_generator, mk_instance_generator
 
 from src.core.util import date_range, fmt_grid_state
@@ -43,7 +43,7 @@ def meter_mkthread(
         surplus = gen - con
         s.sendall(
             pickle.dumps(
-                make_msg_body(
+                comms.make_msg_body(
                     s.getsockname(),
                     "surplus",
                     surplus=surplus,
@@ -128,7 +128,7 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
             for _, addr in conns:
                 gen, con = data_generator(t)
                 messages[addr] = pickle.dumps(
-                    make_msg_body(
+                    comms.make_msg_body(
                         addr,
                         "power",
                         datetime=t,
@@ -148,7 +148,7 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
             messages = {}
             for _, addr in conns:
                 messages[addr] = pickle.dumps(
-                    make_msg_body(addr, "offers", offers=offers)
+                    comms.make_msg_body(addr, "offers", offers=offers)
                 )
             trades = {}
             comms.send_and_recv_sync(
@@ -178,6 +178,8 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
                 }
                 for addr in surplus
             ]
+            for buyer, (src, amnt) in trades_iter():
+                execute_trade(buyer, datetime_delta, grid_state[2], grid_state[3])
             print(f"Moment {t} has passed.")
             append_state(
                 {

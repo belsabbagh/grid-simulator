@@ -3,6 +3,7 @@ import socket
 import pickle
 
 from src.core.util.comms import make_msg_body, make_sockets_handler, listen_for_duration
+from src.types import SocketAddress
 
 
 def mk_meter(
@@ -55,7 +56,7 @@ def mk_meter(
         _broadcast_surplus()
         _handle_requests()
 
-    def _handle_trade(source: tuple[str, int]):
+    def _handle_trade(source: SocketAddress):
         nonlocal trade
         trade = source
 
