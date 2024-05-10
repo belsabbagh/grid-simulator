@@ -122,6 +122,7 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
         )
         grid_state_generator = mk_grid_state_generator()
         participation_counts = {addr: 0 for _, addr in conns}
+        ledger = []
         for t in date_range(start_date, end_date, datetime_delta):
             grid_state = grid_state_generator(t)
             surplus: dict[SocketAddress, float] = {}
@@ -161,6 +162,16 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
                 source = trades[trade]
                 if source is None:
                     continue
+                source_identifier = source[1]
+                buyer_identifier = buyer[1]
+                ledger.append(
+                    {
+                        "source": source_identifier,
+                        "buyer": buyer_identifier,
+                        "amount": surplus[source],
+                        "time": t,
+                    }
+                )
                 participation_counts[source] += 1
                 amount = list(filter(lambda x: x["source"] == source, offers))[0][
                     "amount"
@@ -186,6 +197,7 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
                 {
                     "time": t.strftime("%H:%M:%S"),
                     "meters": meters,
+                    "ledger": ledger,
                     "grid_state": fmt_grid_state(grid_state),
                 }
             )
