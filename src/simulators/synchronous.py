@@ -121,6 +121,7 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
             start_date, end_date, datetime_delta, DEVIATION
         )
         grid_state_generator = mk_grid_state_generator()
+        participation_counts = {addr: 0 for _, addr in conns}
         for t in date_range(start_date, end_date, datetime_delta):
             grid_state = grid_state_generator(t)
             surplus: dict[SocketAddress, float] = {}
@@ -141,7 +142,7 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
                 conns, messages, surplus, lambda x: pickle.loads(x)["surplus"]
             )
             offers = [
-                {"source": addr, "amount": surplus[addr], "participation_count": 1}
+                {"source": addr, "amount": surplus[addr], "participation_count": participation_counts[addr]}
                 for addr in surplus
                 if surplus[addr] > 0
             ]
@@ -160,6 +161,7 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
                 source = trades[trade]
                 if source is None:
                     continue
+                participation_counts[source] += 1
                 amount = list(filter(lambda x: x["source"] == source, offers))[0][
                     "amount"
                 ]
@@ -175,6 +177,7 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
                         if addr in trades
                         else None
                     ),
+                    "participation_count": participation_counts[addr]
                 }
                 for addr in surplus
             ]
