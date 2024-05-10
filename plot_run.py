@@ -22,7 +22,6 @@ if __name__ == "__main__":
     # plot_name = os.path.splitext(os.path.basename(run_path))
     # plot.savefig(f"out/plots/{plot_name[0]}.svg", dpi=300, bbox_inches="tight")
 
-
     trade_comparison_dir = os.path.join(plot_dir, "trade_comparison")
     if not os.path.exists(trade_comparison_dir):
         os.makedirs(trade_comparison_dir)
@@ -30,7 +29,7 @@ if __name__ == "__main__":
         before = []
         after = []
         for state in run["states"]:
-            b, a = state["meters"][i]["surplus"], state["meters"][i]["surplus"] + state["meters"][i]["transferred"]
+            b, a = state["meters"][i]["surplus"], state["meters"][i]["surplus"] + state["meters"][i]["sent"]
             if b == a:
                 continue
             before.append(b)
@@ -38,4 +37,5 @@ if __name__ == "__main__":
         plot = analytics.plot_trade_comparison(before, after)
         plot.savefig(f"{trade_comparison_dir}/{i}.svg", dpi=300, bbox_inches="tight")
         plt.clf()
+    print(f"Waste reduced by {((1 - waste_after/waste_before) * 100):.3f}%")
     

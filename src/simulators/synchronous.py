@@ -177,12 +177,13 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
                     "amount"
                 ]
                 transfers[buyer] = min(min(amount, grid_state[-1] * grid_state[-2] * datetime_delta.total_seconds()), abs(surplus[buyer]))
+                transfers[source] = -abs(transfers[buyer])
             meter_display_ids = {addr: i for i, addr in enumerate(surplus.keys(), 1)}
             meters = [
                 {
                     "id": meter_display_ids[addr],
                     "surplus": surplus[addr],
-                    "transferred": transfers.get(addr, 0),
+                    "sent": transfers.get(addr, 0),
                     "in_trade": (
                         meter_display_ids.get(trades.get(addr, None), "")
                         if addr in trades
