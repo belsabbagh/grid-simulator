@@ -33,12 +33,22 @@ def load_model_weights(model_path):
     
     return predict
 
+def load_json_model(model_path):
+    with open(model_path, "r") as f:
+        model = tf.keras.models.model_from_json(f.read())
+    weights = model.get_weights()[0]
+
+    def predict(x):
+        return np.dot(weights, x)
+
+    return predict
+
 def mk_predict_function(
     efficiency_model_path, duration_model_path, quality_model_path, load_model
 ):
-    efficiency_model = load_model(efficiency_model_path)
-    duration_model = load_model(duration_model_path)
-    quality_model = load_model(quality_model_path)
+    efficiency_model = load_json_model(efficiency_model_path)
+    duration_model = load_json_model(duration_model_path)
+    quality_model = load_json_model(quality_model_path)
 
     if efficiency_model is None:
         raise Exception("Efficiency model was not loaded")

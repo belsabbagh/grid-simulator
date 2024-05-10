@@ -96,12 +96,12 @@ def mk_meters_runner(n, server_address, trade_chooser):
 
 
 def make_simulate(server_address, append_state) -> SimulateFunction:
-
+# %%SIMULATION RUNS HERE
     def simulate(n, start_date, end_date, datetime_delta, refresh_rate, optimization_weights=None):
         trade_chooser = mk_choose_best_offers_function(
-            "models/grid-loss.h5",
-            "models/duration.h5",
-            "models/grid-loss.h5",
+            "models/grid-loss.json",
+            "models/duration.json",
+            "models/grid-loss.json",
             weights=optimization_weights
         )
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -154,7 +154,7 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
             comms.send_and_recv_sync(
                 conns, messages, trades, lambda x: pickle.loads(x)["trade"]
             )
-            results = {}
+            transfers = {}
             for trade in trades:
                 buyer = trade
                 source = trades[trade]
@@ -163,13 +163,13 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
                 amount = list(filter(lambda x: x["source"] == source, offers))[0][
                     "amount"
                 ]
-                results[buyer] = amount
+                transfers[buyer] = min(amount, grid_state[-1] * grid_state[-2] * datetime_delta.total_seconds())
             meter_display_ids = {addr: i for i, addr in enumerate(surplus.keys(), 1)}
             meters = [
                 {
                     "id": meter_display_ids[addr],
                     "surplus": surplus[addr],
-                    "transferred": results.get(addr, 0),
+                    "transferred": transfers.get(addr, 0),
                     "in_trade": (
                         meter_display_ids.get(trades.get(addr, None), "")
                         if addr in trades
@@ -178,8 +178,6 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
                 }
                 for addr in surplus
             ]
-            for buyer, (src, amnt) in trades_iter():
-                execute_trade(buyer, datetime_delta, grid_state[2], grid_state[3])
             print(f"Moment {t} has passed.")
             append_state(
                 {
