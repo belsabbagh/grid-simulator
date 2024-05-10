@@ -176,7 +176,7 @@ def make_simulate(server_address, append_state) -> SimulateFunction:
                 amount = list(filter(lambda x: x["source"] == source, offers))[0][
                     "amount"
                 ]
-                transfers[buyer] = min(amount, grid_state[-1] * grid_state[-2] * datetime_delta.total_seconds())
+                transfers[buyer] = min(min(amount, grid_state[-1] * grid_state[-2] * datetime_delta.total_seconds()), abs(surplus[buyer]))
             meter_display_ids = {addr: i for i, addr in enumerate(surplus.keys(), 1)}
             meters = [
                 {

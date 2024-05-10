@@ -37,3 +37,15 @@ def plot_demand_and_generation(states):
     plt.legend()
 
     return plt.gcf()
+
+
+def plot_trade_comparison(before, after):
+    sns.lineplot(x=range(len(before)), y=before, label="Before Trade")  # type: ignore
+
+    sns.lineplot(x=range(len(before)), y=after, label="After Trade")  # type: ignore
+    plt.title("Surplus and Transferred Over Time")
+    plt.xlabel("Time")
+    plt.ylabel("Value")
+    plt.legend()
+
+    return plt.gcf()
