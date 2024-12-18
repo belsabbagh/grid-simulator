@@ -1,22 +1,17 @@
-[tool.poetry]
+[project]
 name = "grid-simulator"
 version = "0.1.0"
-description = ""
-authors = ["belsabbagh <belsabbagh@gmail.com>"]
+description = "Add your description here"
 readme = "README.md"
-package-mode = false
-
-[tool.poetry.dependencies]
-python = "^3.11"
-tensorflow = "^2.16.1"
-numpy = "^1.26"
-pandas = "^2.2.2"
-pvlib = "^0.10.4"
-matplotlib = "^3.8.4"
-seaborn = "^0.13.2"
-flask = "^3.0.3"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1.0",
+    "flask-cors>=5.0.0",
+    "matplotlib>=3.10.0",
+    "numpy>=2.0.2",
+    "pandas>=2.2.3",
+    "pandas-stubs>=2.2.3.241126",
+    "pvlib>=0.11.2",
+    "seaborn>=0.13.2",
+    "tensorflow>=2.18.0",
+]
