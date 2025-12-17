@@ -124,7 +124,6 @@ def make_simulate(append_state) -> SimulateFunction:
                 }
                 for i, m in meters.items()
             ]
-            print(f"Moment {t} has passed.")
             append_state(
                 {
                     "time": t.strftime("%H:%M:%S"),

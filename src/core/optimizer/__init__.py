@@ -30,8 +30,9 @@ def load_model_weights(model_path):
 
     def predict(x):
         return np.dot(w, x)
-    
+
     return predict
+
 
 def load_json_model(model_path):
     with open(model_path, "r") as f:
@@ -42,6 +43,7 @@ def load_json_model(model_path):
         return np.dot(weights, x)
 
     return predict
+
 
 def mk_predict_function(
     efficiency_model_path, duration_model_path, quality_model_path, load_model
@@ -69,9 +71,14 @@ def mk_predict_function(
     return predict_function
 
 
-def mk_fitness_function(efficiency_model_path, duration_model_path, quality_model_path, weights=None):
+def mk_fitness_function(
+    efficiency_model_path, duration_model_path, quality_model_path, weights=None
+):
     predict = mk_predict_function(
-        efficiency_model_path, duration_model_path, quality_model_path, load_model_weights
+        efficiency_model_path,
+        duration_model_path,
+        quality_model_path,
+        load_model_weights,
     )
     if weights is None:
         weights = (1, -1, 1, -1, 1, -1)
@@ -108,7 +115,11 @@ def mk_fitness_function(efficiency_model_path, duration_model_path, quality_mode
 
 
 def mk_choose_best_offers_function(
-    efficiency_model_path, duration_model_path, quality_model_path, count: int = 5, weights=None
+    efficiency_model_path,
+    duration_model_path,
+    quality_model_path,
+    count: int = 5,
+    weights=None,
 ):
     fitness = mk_fitness_function(
         efficiency_model_path, duration_model_path, quality_model_path, weights

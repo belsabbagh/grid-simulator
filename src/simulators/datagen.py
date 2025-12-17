@@ -29,7 +29,6 @@ def make_simulate(n, _, append_state) -> SimulateFunction:
                     ],
                 }
             )
-            print(f"Moment {t} has passed.")
             time.sleep(refresh_rate)
 
     return simulate
