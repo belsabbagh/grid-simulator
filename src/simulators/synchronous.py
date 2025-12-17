@@ -48,6 +48,7 @@ def make_simulate(append_state) -> SimulateFunction:
             weights=None,
         )
         meters: Dict[str, Meter] = {f"{i}": Meter(f"{i}") for i in range(n)}
+        meter_display_ids = {addr: i for i, addr in enumerate(meters.keys(), 1)}
         ledger: List[Dict] = []
         data_generator = mk_instance_generator(
             start_date, end_date, datetime_delta, DEVIATION
@@ -67,7 +68,25 @@ def make_simulate(append_state) -> SimulateFunction:
                             "participation_count": m.sold_count,
                         }
                     )
-
+            if not offers:
+                meter_states = [
+                    {
+                        "id": meter_display_ids[i],
+                        "surplus": m.surplus,
+                        "sent": 0,
+                        "in_trade": None,
+                        "participation_count": m.sold_count,
+                    }
+                    for i, m in meters.items()
+                ]
+                append_state(
+                    {
+                        "time": t.strftime("%H:%M:%S"),
+                        "meters": meter_states,
+                        "grid_state": fmt_grid_state(grid_state),
+                    }
+                )
+                continue
             trades: Dict[str, str | None] = {}
             requests: Dict[str, List[Tuple[str, float]]] = {}
             transfers: Dict[str, float] = {}
@@ -109,7 +128,6 @@ def make_simulate(append_state) -> SimulateFunction:
                     abs(meters[buyer].surplus),
                 )
                 transfers[seller] = -abs(transfers[buyer])
-            meter_display_ids = {addr: i for i, addr in enumerate(meters.keys(), 1)}
             meter_states = [
                 {
                     "id": meter_display_ids[i],
