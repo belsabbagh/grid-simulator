@@ -1,18 +1,11 @@
 import pickle
-import socket
-import threading
-import time
-import socket
-from typing import Any, Callable
+from typing import Dict, List, Tuple
 
 from src.config import DEVIATION, NUM_METERS
-from src.core import trade_handler
-from src.core.optimizer import mk_choose_best_offers_function
-from src.types import SimulateFunction, SocketAddress
-from src.core.util import comms
 from src.core.data_generator import mk_grid_state_generator, mk_instance_generator
-
+from src.core.optimizer import mk_choose_best_offers_function
 from src.core.util import date_range, fmt_grid_state
+from src.types import SimulateFunction
 
 
 def calc_sizeof_offers_msg(n):
@@ -27,181 +20,117 @@ def calc_sizeof_offers_msg(n):
 offers_msg_size = calc_sizeof_offers_msg(NUM_METERS)
 
 
-def meter_mkthread(
-    s: socket.socket, buf_size: int, trade_chooser
-) -> Callable[..., threading.Thread]:
-    def run() -> None:
-        recv_stream: bytes = s.recv(buf_size)
-        if not recv_stream:
-            return
-        data: dict[str, Any] = pickle.loads(recv_stream)
-        data_type = data["type"]
-        if data_type != "power":
-            raise ValueError("Haven't received power data.")
-        gen, con = data["generation"], data["consumption"]
-        grid_state = data["grid_state"]
-        surplus = gen - con
-        s.sendall(
-            pickle.dumps(
-                comms.make_msg_body(
-                    s.getsockname(),
-                    "surplus",
-                    surplus=surplus,
-                    generation=gen,
-                    consumption=con,
-                )
-            )
-        )
-        recv_stream = s.recv(offers_msg_size)
-        if not recv_stream:
-            return
-        data = pickle.loads(recv_stream)
-        if data["type"] != "offers":
-            return
-        if not data["offers"] or surplus >= 0:
-            s.sendall(pickle.dumps({"from": s.getsockname(), "trade": None}))
-            return
-        result = trade_chooser(surplus, data["offers"], grid_state)
-        offer, fitness = result[0]
-        s.sendall(
-            pickle.dumps(
-                {"from": s.getsockname(), "trade": offer["source"], "fitness": fitness}
-            )
-        )
+class Meter:
+    id: str
+    surplus: float = 0
+    sold_count: int = 0
 
-    def mkthread(args=None):
-        if args is None:
-            args = ()
-        return threading.Thread(target=run, args=args)
+    def __init__(self, id: str) -> None:
+        self.id = id
 
-    return mkthread
+    def read_env(self, gen: float, con: float) -> float:
+        """Get generation and consumption and return surplus"""
+        self.surplus = gen - con
+        return self.surplus
+
+    def choose_offer(
+        self, offers: List[dict], grid_state: List[float], trade_chooser
+    ) -> Tuple[Dict, float]:
+        return trade_chooser(self.surplus, offers, grid_state)
 
 
-def mk_meters_runner(n, server_address, trade_chooser):
-
-    sockets = [socket.socket(socket.AF_INET, socket.SOCK_STREAM) for _ in range(n)]
-    for s in sockets:
-        s.connect(server_address)
-    meters = [meter_mkthread(s, 512, trade_chooser) for s in sockets]
-
-    def meters_runner():
-        while True:
-            threads = [m() for m in meters]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
-
-    return meters_runner
-
-
-def make_simulate(server_address, append_state) -> SimulateFunction:
-# %%SIMULATION RUNS HERE
-    def simulate(n, start_date, end_date, datetime_delta, refresh_rate, optimization_weights=None):
+def make_simulate(append_state) -> SimulateFunction:
+    def simulate(n, start_date, end_date, datetime_delta):
         trade_chooser = mk_choose_best_offers_function(
             "models/grid-loss.json",
             "models/duration.json",
             "models/grid-loss.json",
-            weights=optimization_weights
+            weights=None,
         )
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(server_address)
-            s.listen(n)
-            print("Server started")
-            conns: list[tuple[socket.socket, SocketAddress]] = []
-            print("Waiting to connect to meters...")
-            meters_runner = mk_meters_runner(n, server_address, trade_chooser)
-            meters_thread = threading.Thread(target=meters_runner)
-            meters_thread.daemon = True
-            meters_thread.start()
-            for _ in range(n):
-                conn, addr = s.accept()
-                conns.append((conn, addr))
+        meters: Dict[str, Meter] = {f"{i}": Meter(f"{i}") for i in range(n)}
+        ledger: List[Dict] = []
         data_generator = mk_instance_generator(
             start_date, end_date, datetime_delta, DEVIATION
         )
         grid_state_generator = mk_grid_state_generator()
-        participation_counts = {addr: 0 for _, addr in conns}
-        ledger = []
         for t in date_range(start_date, end_date, datetime_delta):
             grid_state = grid_state_generator(t)
-            surplus: dict[SocketAddress, float] = {}
-            messages = {}
-            for _, addr in conns:
+            offers: List[Dict[str, str | int | float]] = []
+            for i, m in meters.items():
                 gen, con = data_generator(t)
-                messages[addr] = pickle.dumps(
-                    comms.make_msg_body(
-                        addr,
-                        "power",
-                        datetime=t,
-                        grid_state=grid_state,
-                        generation=gen,
-                        consumption=con,
+                m.read_env(gen, con)
+                if m.surplus > 0:
+                    offers.append(
+                        {
+                            "source": i,
+                            "amount": m.surplus,
+                            "participation_count": m.sold_count,
+                        }
                     )
-                )
-            comms.send_and_recv_sync(
-                conns, messages, surplus, lambda x: pickle.loads(x)["surplus"]
-            )
-            offers = [
-                {"source": addr, "amount": surplus[addr], "participation_count": participation_counts[addr]}
-                for addr in surplus
-                if surplus[addr] > 0
-            ]
-            messages = {}
-            for _, addr in conns:
-                messages[addr] = pickle.dumps(
-                    comms.make_msg_body(addr, "offers", offers=offers)
-                )
-            trades = {}
-            comms.send_and_recv_sync(
-                conns, messages, trades, lambda x: pickle.loads(x)["trade"]
-            )
-            transfers = {}
-            for trade in trades:
-                buyer = trade
-                source = trades[trade]
-                if source is None:
+
+            trades: Dict[str, str | None] = {}
+            requests: Dict[str, List[Tuple[str, float]]] = {}
+            transfers: Dict[str, float] = {}
+            for i, m in meters.items():
+                if m.surplus > 0:
+                    trades[i] = None
                     continue
-                source_identifier = source[1]
-                buyer_identifier = buyer[1]
+                choices = m.choose_offer(offers, grid_state, trade_chooser)
+                if not choices:
+                    trades[i] = None
+                    continue
+                offer, fitness = choices[0]
+                trades[i] = offer["source"]
+                requests[offer["source"]] = (
+                    [(i, fitness)]
+                    if requests.get(offer["source"]) is None
+                    else requests[offer["source"]] + [(i, fitness)]
+                )
+
+            for seller, buyers in requests.items():
+                buyer, fitness = sorted(buyers, key=lambda x: x[1], reverse=True)[0]
+                amount = meters[seller].surplus
                 ledger.append(
                     {
-                        "source": source_identifier,
-                        "buyer": buyer_identifier,
-                        "amount": surplus[source],
+                        "source": seller,
+                        "buyer": buyer,
+                        "amount": meters[seller].surplus,
                         "time": t,
                     }
                 )
-                participation_counts[source] += 1
-                amount = list(filter(lambda x: x["source"] == source, offers))[0][
-                    "amount"
-                ]
-                transfers[buyer] = min(min(amount, grid_state[-1] * grid_state[-2] * datetime_delta.total_seconds()), abs(surplus[buyer]))
-                transfers[source] = -abs(transfers[buyer])
-            meter_display_ids = {addr: i for i, addr in enumerate(surplus.keys(), 1)}
-            meters = [
+                meters[seller].sold_count += 1
+                transfers[buyer] = min(
+                    min(
+                        amount,
+                        grid_state[-1]
+                        * grid_state[-2]
+                        * datetime_delta.total_seconds(),
+                    ),
+                    abs(meters[buyer].surplus),
+                )
+                transfers[seller] = -abs(transfers[buyer])
+            meter_display_ids = {addr: i for i, addr in enumerate(meters.keys(), 1)}
+            meter_states = [
                 {
-                    "id": meter_display_ids[addr],
-                    "surplus": surplus[addr],
-                    "sent": transfers.get(addr, 0),
+                    "id": meter_display_ids[i],
+                    "surplus": m.surplus,
+                    "sent": transfers.get(i, 0),
                     "in_trade": (
-                        meter_display_ids.get(trades.get(addr, None), "")
-                        if addr in trades
+                        meter_display_ids.get(trades.get(i, None), "")
+                        if i in trades
                         else None
                     ),
-                    "participation_count": participation_counts[addr]
+                    "participation_count": m.sold_count,
                 }
-                for addr in surplus
+                for i, m in meters.items()
             ]
             print(f"Moment {t} has passed.")
             append_state(
                 {
                     "time": t.strftime("%H:%M:%S"),
-                    "meters": meters,
-                    "ledger": ledger,
+                    "meters": meter_states,
                     "grid_state": fmt_grid_state(grid_state),
                 }
             )
-            time.sleep(refresh_rate)
 
     return simulate

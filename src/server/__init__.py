@@ -1,7 +1,7 @@
 import os
 import pickle
 from typing import Callable, Optional
-from flask import Flask, jsonify, request
+from flask import Flask, Response, json, jsonify, request
 from flask_cors import CORS
 import datetime
 import threading
@@ -14,6 +14,7 @@ from src.config import (
     SERVER_ADDRESS,
     INCREMENT_MINUTES,
 )
+from src.types import SimulateFunction
 
 
 def get_run(runs_folder: str, run_id: str) -> Optional[dict]:
@@ -60,49 +61,11 @@ def create_flask_server(
     Returns:
         Callable[[], None]: A function that starts the server.
     """
-    append_state, fetch_next_state, immutable_iter, _ = make_buffer()
 
     app = Flask(__name__)
     cors_resources = {r"/*/*": {"origins": "*"}}
     cors = CORS(app, resources=cors_resources)
-    running = False
     record = None
-
-    simulate = synchronous.make_simulate(SERVER_ADDRESS, append_state)
-
-    @app.route("/realtime/next", methods=["GET"])
-    def realtime_next_state():
-        state = fetch_next_state()
-        return jsonify(state)
-
-    def run(num_meters, start_date, end_date, increment):
-        nonlocal running
-        running = True
-        start = datetime.datetime.now()
-        try:
-            simulate(num_meters, start_date, end_date, increment, 0)
-        except Exception as e:
-            print(e)
-        finally:
-            running = False
-        end = datetime.datetime.now()
-        dump = (
-            mk_dumper()
-        )  # The dumper knows how to dump the format you want. you just write the file name as .json or .pkl
-        dump(
-            {
-                "debug": {
-                    "time_taken": f"{end - start}",
-                },
-                "parameters": {
-                    "START_DATE": start_date.strftime("%Y-%m-%d %H:%M:%S"),
-                    "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
-                    "NUM_METERS": num_meters,
-                },
-                "states": list(immutable_iter()),
-            },
-            f"out/runs/server_dump{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.pkl",
-        )
 
     @app.route("/runs", methods=["GET"])
     def playback_runs():
@@ -115,24 +78,56 @@ def create_flask_server(
             }
         )
 
-    @app.route("/runs/running", methods=["GET"])
-    def is_running():
-        return jsonify({"running": running})
-
-    @app.route("/runs/start", methods=["POST"])
+    @app.route("/runs", methods=["POST"])
     def start_run():
         init_start = default_timer()
         if request.json is None:
             raise ValueError("Request is None.")
-        if running:
+        try:
+            data = request.json
+            num_meters = int(data.get("numMeters"))
+            start_date_str = data.get("startDate")
+
+            # NOTE: We don't parse "endDate" yet, as it will be calculated/overridden.
+
+            if not all([num_meters, start_date_str]):
+                return jsonify(
+                    {"error": "Missing numMeters or startDate in request body."}
+                ), 400
+
+            start_date = datetime.datetime.fromisoformat(start_date_str)
+
+        except ValueError as e:
+            # Catch errors from int() or fromisoformat()
+            return jsonify({"error": f"Invalid data format provided: {e}"}), 400
+        except Exception:
+            # Catch other potential errors like missing JSON
             return jsonify(
-                {"status": "failed", "message": "A run is already in progress."}
-            )
-        num_meters = int(request.json["numMeters"])
-        start_date = datetime.datetime.fromisoformat(request.json["startDate"])
-        end_date = datetime.datetime.fromisoformat(request.json["endDate"])
+                {"error": "Invalid request body format (must be JSON)."}
+            ), 400
+
+        now = datetime.datetime.now()
+
+        if start_date >= now:
+            return jsonify(
+                {
+                    "error": f"Start date must be in the past. Provided: {start_date.isoformat()}"
+                }
+            ), 400
+        MAX_METERS = 30
+        if num_meters > MAX_METERS:
+            return jsonify(
+                {
+                    "error": f"Number of meters cannot exceed {MAX_METERS}. Provided: {num_meters}"
+                }
+            ), 400
+
+        time_delta = datetime.timedelta(hours=24)
+        end_date = start_date + time_delta
+        append_state, fetch_next_state, immutable_iter, _ = make_buffer()
+        simulate = synchronous.make_simulate(append_state)
         simulate_thread = threading.Thread(
-            target=run,
+            target=simulate,
             args=(
                 num_meters,
                 start_date,
@@ -143,7 +138,46 @@ def create_flask_server(
         init_time = default_timer() - init_start
         simulate_thread.start()
         print(f"Initialization took {init_time:3} seconds.")
-        return jsonify({"status": "started", "init_time": init_time})
+
+        def stream():
+            run_start = default_timer()
+            yield (
+                json.dumps(
+                    {
+                        "status": "running",
+                        "parameters": {
+                            "START_DATE": start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                            "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                            "NUM_METERS": num_meters,
+                        },
+                    }
+                )
+                + "\n"
+            )
+
+            # Stream the states
+            while simulate_thread.is_alive():
+                state = fetch_next_state()
+                if state is None:
+                    continue
+                yield json.dumps({"state": state}) + "\n"
+            result = json.dumps(
+                {
+                    "states": list(immutable_iter()),
+                    "status": "done",
+                    "debug": {
+                        "time_taken": f"{default_timer() - run_start}",
+                    },
+                    "parameters": {
+                        "START_DATE": start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        "NUM_METERS": num_meters,
+                    },
+                }
+            )
+            yield result
+
+        return Response(stream(), mimetype="text/event-stream")  # type:ignore
 
     @app.route("/runs/<string:run_id>", methods=["GET"])
     def playback_parameters(run_id):
