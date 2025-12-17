@@ -12,6 +12,8 @@ from src.config import (
 )
 from pydantic import BaseModel, Field, field_validator
 
+from fastapi.middleware.cors import CORSMiddleware
+
 
 class MeterRequest(BaseModel):
     # Field constraints handle the "MAX_METERS" check automatically
@@ -31,6 +33,17 @@ class MeterRequest(BaseModel):
 
 
 app = FastAPI()
+origins = [
+    "https://energy-trading.belsabbagh.me",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/run")
