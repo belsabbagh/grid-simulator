@@ -89,19 +89,22 @@ def run(data: MeterRequest):
             if state is None:
                 continue
             yield json.dumps({"state": state}) + "\n"
-        result = json.dumps(
-            {
-                "states": list(immutable_iter()),
-                "status": "done",
-                "debug": {
-                    "time_taken": f"{default_timer() - run_start}",
-                },
-                "parameters": {
-                    "START_DATE": start_date.strftime("%Y-%m-%d %H:%M:%S"),
-                    "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
-                    "NUM_METERS": num_meters,
-                },
-            }
+        result = (
+            json.dumps(
+                {
+                    "states": list(immutable_iter()),
+                    "status": "done",
+                    "debug": {
+                        "time_taken": f"{default_timer() - run_start}",
+                    },
+                    "parameters": {
+                        "START_DATE": start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        "NUM_METERS": num_meters,
+                    },
+                }
+            )
+            + "\n"
         )
         yield result
 
