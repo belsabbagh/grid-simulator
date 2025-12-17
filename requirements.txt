@@ -9,5 +9,3 @@ pvlib==0.13.1
 pydantic==2.12.5
 pydantic-core==2.41.5
 seaborn==0.13.2
-tensorflow==2.20.0
-
