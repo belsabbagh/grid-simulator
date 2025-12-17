@@ -100,12 +100,11 @@ def run(data: MeterRequest):
                 state = fetch_next_state()
                 if state is None:
                     continue
-                yield json.dumps({"state": state}) + "\n"
-            if simulate_thread.exception:
+                yield json.dumps({"status": "running", "state": state}) + "\n"
+            if simulate_thread.exception is not None:
                 raise simulate_thread.exception
             result = json.dumps(
                 {
-                    "states": list(immutable_iter()),
                     "status": "done",
                     "debug": {
                         "time_taken": f"{default_timer() - run_start}",
@@ -115,6 +114,7 @@ def run(data: MeterRequest):
                         "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
                         "NUM_METERS": num_meters,
                     },
+                    "states": list(immutable_iter()),
                 }
             )
             yield result + "\n"
