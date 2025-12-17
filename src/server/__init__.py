@@ -32,6 +32,18 @@ class MeterRequest(BaseModel):
         populate_by_name = True
 
 
+class SimulationThead(threading.Thread):
+    def __init__(self, target, *args, **kwargs):
+        super().__init__(target=target, *args, **kwargs)
+        self.exception = None
+
+    def run(self):
+        try:
+            super().run()
+        except Exception as e:
+            self.exception = e
+
+
 app = FastAPI()
 origins = [
     "https://energy-trading.belsabbagh.me",
@@ -55,7 +67,7 @@ def run(data: MeterRequest):
     end_date = start_date + time_delta
     append_state, fetch_next_state, immutable_iter, _ = make_buffer()
     simulate = synchronous.make_simulate(append_state)
-    simulate_thread = threading.Thread(
+    simulate_thread = SimulationThead(
         target=simulate,
         args=(
             num_meters,
@@ -83,14 +95,15 @@ def run(data: MeterRequest):
             )
             + "\n"
         )
-
-        while simulate_thread.is_alive():
-            state = fetch_next_state()
-            if state is None:
-                continue
-            yield json.dumps({"state": state}) + "\n"
-        result = (
-            json.dumps(
+        try:
+            while simulate_thread.is_alive():
+                state = fetch_next_state()
+                if state is None:
+                    continue
+                yield json.dumps({"state": state}) + "\n"
+            if simulate_thread.exception:
+                raise simulate_thread.exception
+            result = json.dumps(
                 {
                     "states": list(immutable_iter()),
                     "status": "done",
@@ -104,8 +117,9 @@ def run(data: MeterRequest):
                     },
                 }
             )
-            + "\n"
-        )
-        yield result
+            yield result + "\n"
+
+        except Exception as e:
+            yield json.dumps({"status": "error", "message": str(e)}) + "\n"
 
     return StreamingResponse(stream())
