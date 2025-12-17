@@ -97,7 +97,6 @@ def run(data: MeterRequest):
         )
         try:
             while simulate_thread.is_alive():
-                print(simulate_thread.exception)
                 state = fetch_next_state()
                 if state is None:
                     continue
