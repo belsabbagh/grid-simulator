@@ -1,9 +1,13 @@
-flask==3.1.2
-flask-cors==6.0.2
+fastapi==0.124.4
+fastapi-cli==0.0.16
+fastapi-cloud-cli==0.7.0
 matplotlib==3.10.8
 numpy==2.3.5
 pandas==2.3.3
 pandas-stubs==2.3.3.251201
+pvlib==0.13.1
+pydantic==2.12.5
+pydantic-core==2.41.5
 seaborn==0.13.2
-setuptools==80.9.0
 tensorflow==2.20.0
+

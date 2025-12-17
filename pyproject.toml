@@ -5,8 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "flask>=3.1.0",
-    "flask-cors>=5.0.0",
+    "fastapi[standard]>=0.124.4",
     "matplotlib>=3.10.0",
     "numpy>=2.0.2",
     "pandas>=2.2.3",
