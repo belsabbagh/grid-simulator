@@ -17,6 +17,7 @@ WORKDIR /root/
 
 COPY --from=builder /energy-trading-simulator .
 COPY --from=builder /app/models ./models/
+COPY --from=builder /app/data ./data/
 
 EXPOSE 5515
 
