@@ -74,6 +74,6 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/run", runHandler)
-	fmt.Println("SSE Server starting on :8000...")
-	http.ListenAndServe(":8000", nil)
+	fmt.Println("SSE Server starting on :8080...")
+	http.ListenAndServe(":8080", nil)
 }
