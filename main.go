@@ -39,7 +39,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
 		return
 	}
-	layout := "2020-01-01T00:00"
+	layout := "2006-01-02T15:04"
 	startDate, err := time.Parse(layout, req.StartDate)
 	if err != nil {
 		fmt.Println("Error parsing time:", err)
