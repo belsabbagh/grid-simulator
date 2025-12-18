@@ -16,6 +16,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 COPY --from=builder /energy-trading-simulator .
+COPY --from=builder /app/models .
 
 EXPOSE 5515
 
