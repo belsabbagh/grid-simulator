@@ -36,15 +36,72 @@ type Choice struct {
 type MeterState struct {
 	ID                 int64   `json:"id"`
 	Surplus            float64 `json:"surplus"`
-	Sent               float64 `json:"sent"`
-	InTrade            *int64  `json:"in_trade"`
+	Purchased          float64 `json:"purchased"`
+	From               *int64  `json:"in_trade"`
 	ParticipationCount int64   `json:"participation_count"`
 }
 
 type SimulationState struct {
-	Time      string             `json:"time"`
-	Meters    []MeterState       `json:"meters"`
-	GridState map[string]float64 `json:"grid_state"`
+	Time      string              `json:"time"`
+	Meters    []MeterState        `json:"meters"`
+	GridState map[string]float64  `json:"grid_state"`
+	Analytics SimulationAnalytics `json:"analytics"`
+}
+
+type SimulationAnalytics struct {
+	EnergyWastedBefore      float64 `json:"Energy Wasted Before"`
+	EnergyWastedAfter       float64 `json:"Energy Wasted After"`
+	StatesMissedOutOnTrades int64   `json:"States missed out on trades"`
+	TotalStates             int64   `json:"Total States"`
+}
+
+func countAvailableSurplusMeters(meters []MeterState) int64 {
+	activeProviders := make(map[int64]struct{})
+	for _, m := range meters {
+		if m.From != nil {
+			activeProviders[*m.From] = struct{}{}
+		}
+	}
+	count := int64(0)
+	for _, m := range meters {
+		_, isProviding := activeProviders[m.ID]
+
+		if m.Surplus > 0 && !isProviding {
+			count++
+		}
+	}
+
+	return count
+}
+
+func NewSimulationAnalytics() *SimulationAnalytics {
+	return &SimulationAnalytics{
+		EnergyWastedBefore:      0,
+		EnergyWastedAfter:       0,
+		StatesMissedOutOnTrades: 0,
+		TotalStates:             0,
+	}
+}
+
+func (sa *SimulationAnalytics) Aggregate(meters []MeterState) *SimulationAnalytics {
+	sa.TotalStates += 1
+	available := countAvailableSurplusMeters(meters)
+	if available > 0 {
+
+		sa.StatesMissedOutOnTrades += 1
+	}
+	for _, m := range meters {
+		if m.Surplus > 0 {
+			sa.EnergyWastedBefore += m.Surplus
+		}
+		remaining := m.Surplus + m.Purchased
+
+		if remaining > 0 {
+			sa.EnergyWastedAfter += remaining
+		}
+	}
+
+	return sa
 }
 
 var GridStateParams = []string{
@@ -77,8 +134,8 @@ func mapMeterStates(meters map[string]*Meter, displayIds map[string]int64, trade
 		results = append(results, MeterState{
 			ID:                 displayIds[id],
 			Surplus:            m.Surplus,
-			Sent:               transfers[id],
-			InTrade:            inTrade,
+			Purchased:          transfers[id],
+			From:               inTrade,
 			ParticipationCount: m.SoldCount,
 		})
 	}
@@ -91,9 +148,8 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 	go func() {
 		defer close(out)
 		tradeChooser := MkChooseBestOffersFunction("models/grid-loss-weights.csv", "models/duration-weights.csv", "models/grid-loss.json", 3, make([]float64, 0))
-		dataGenerator := MkInstanceGenerator(startDate, endDate, increment, 0.1)
+		dataGenerator := MkInstanceGenerator(startDate, endDate, increment, 0.5)
 		gridStateGenerator := MkGridStateGenerator()
-
 		meters := make(map[string]*Meter)
 		meterDisplayIds := make(map[string]int64)
 		for i := range n {
@@ -119,9 +175,10 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 			}
 
 			if len(offers) == 0 {
+				meterStates := mapMeterStates(meters, meterDisplayIds, nil, nil)
 				out <- SimulationState{
 					Time:      t.Format(time.RFC3339),
-					Meters:    mapMeterStates(meters, meterDisplayIds, nil, nil),
+					Meters:    meterStates,
 					GridState: FmtGridState(gridState),
 				}
 				continue
@@ -155,12 +212,11 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				})
 
 				buyerID := buyers[0].Offer.Source
-				amount := meters[sellerID].Surplus
 				meters[sellerID].SoldCount++
 
 				gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * increment.Seconds()
 				transferAmount := math.Min(
-					math.Min(amount, gridLimit),
+					math.Min(meters[sellerID].Surplus, gridLimit),
 					math.Abs(meters[buyerID].Surplus),
 				)
 
@@ -168,11 +224,12 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				transfers[sellerID] = -transferAmount
 			}
 
-			// 5. Yield State
+			meterStates := mapMeterStates(meters, meterDisplayIds, trades, transfers)
+
 			out <- SimulationState{
 				Time:      t.Format("15:04:05"),
 				GridState: FmtGridState(gridState),
-				Meters:    mapMeterStates(meters, meterDisplayIds, trades, transfers),
+				Meters:    meterStates,
 			}
 		}
 	}()

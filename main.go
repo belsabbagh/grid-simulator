@@ -23,6 +23,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Access-Control-Allow-Origin", "*") // Allow any origin
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	if r.Method == http.MethodOptions {
@@ -53,16 +54,19 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	endDate := startDate.Add(24 * time.Hour)
-	// ... setup code ...
+	analytics := simulator.NewSimulationAnalytics()
 	sim := simulator.Simulate(req.NumMeters, startDate, endDate, time.Minute)
 
 	for state := range sim {
+		analytics.Aggregate(state.Meters)
 		payload := struct {
-			Status string                    `json:"status"`
-			State  simulator.SimulationState `json:"state"`
+			Status    string                        `json:"status"`
+			State     simulator.SimulationState     `json:"state"`
+			Analytics simulator.SimulationAnalytics `json:"analytics"`
 		}{
-			Status: "running",
-			State:  state,
+			Status:    "running",
+			State:     state,
+			Analytics: *analytics,
 		}
 
 		jsonData, err := json.Marshal(payload)

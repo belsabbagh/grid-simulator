@@ -25,7 +25,7 @@ func PrepareGenerationLookup(start time.Time, end time.Time, increment time.Dura
 			totalDaylight := st["sunset"].Value.Sub(st["sunrise"].Value).Seconds()
 			elapsed := t.Sub(st["sunrise"].Value).Seconds()
 			intensity := math.Sin(math.Pi * (elapsed / totalDaylight))
-			power = intensity * (2.3 / 1000.0) * 1000
+			power = intensity * 1.2
 
 		}
 		gen[t] = power
@@ -69,8 +69,8 @@ func GenerateRandom(t time.Time, data map[time.Time]float64, deviation float64) 
 	if !ok {
 		return 0.0
 	}
-	randomVal := (rand.Float64() * 2 * deviation) - deviation
-	return val + randomVal
+	randomVal := (rand.Float64() * deviation) - deviation
+	return math.Max(0, val+randomVal)
 }
 
 func MkInstanceGenerator(start, end time.Time, increment time.Duration, deviation float64) InstanceGenerator {
@@ -92,7 +92,7 @@ func MkGridStateGenerator() GridStateGenerator {
 	return func(_t time.Time) []float64 {
 		results := make([]float64, len(means))
 
-		for i := 0; i < len(means); i++ {
+		for i := range means {
 			// rand.NormFloat64 returns a normal distribution with:
 			// mean = 0, stddev = 1.
 			// To adjust: (StandardNormal * dev) + mean
