@@ -1,18 +1,19 @@
-from fastapi.responses import StreamingResponse
-import json
-from fastapi import FastAPI
 import datetime
+import json
 import threading
+import time
 from timeit import default_timer
 
-from src.core.util.buffer import make_buffer
-from src.simulators import synchronous
+from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field, field_validator
+
 from src.config import (
     INCREMENT_MINUTES,
 )
-from pydantic import BaseModel, Field, field_validator
-
-from fastapi.middleware.cors import CORSMiddleware
+from src.core.util.buffer import make_buffer
+from src.simulators import synchronous
 
 
 class MeterRequest(BaseModel):
@@ -41,13 +42,12 @@ class SimulationThead(threading.Thread):
         try:
             super().run()
         except Exception as e:
+            print("SimulationThread Error", e)
             self.exception = e
 
 
 app = FastAPI()
-origins = [
-    "https://energy-trading.belsabbagh.me",
-]
+origins = ["https://energy-trading.belsabbagh.me", "http://localhost:5173"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -56,6 +56,66 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(ws: WebSocket):
+    init_start = default_timer()
+    await ws.accept()
+    time_delta = datetime.timedelta(hours=24)
+    data = await ws.receive_json()
+    start_date: datetime.datetime = datetime.datetime.fromisoformat(data["startDate"])
+    num_meters = int(data["numMeters"])
+    end_date = start_date + time_delta
+    append_state, fetch_next_state, immutable_iter, _ = make_buffer()
+    simulate = synchronous.make_simulate(append_state)
+    simulate_thread = SimulationThead(
+        target=simulate,
+        args=(
+            num_meters,
+            start_date,
+            end_date,
+            datetime.timedelta(minutes=INCREMENT_MINUTES),
+        ),
+    )
+    init_time = default_timer() - init_start
+    simulate_thread.start()
+    print(f"Initialization took {init_time:3} seconds.")
+
+    run_start = default_timer()
+    res = await ws.send_json(
+        {
+            "status": "started",
+            "parameters": {
+                "START_DATE": start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                "NUM_METERS": num_meters,
+            },
+        }
+    )
+    try:
+        while simulate_thread.is_alive():
+            state = fetch_next_state()
+            if state is None:
+                continue
+            res = await ws.send_json({"status": "running", "state": state})
+            time.sleep(0.1)
+        if simulate_thread.exception is not None:
+            raise simulate_thread.exception
+        result = {
+            "status": "done",
+            "debug": {
+                "time_taken": f"{default_timer() - run_start}",
+            },
+            "parameters": {
+                "START_DATE": start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                "NUM_METERS": num_meters,
+            },
+        }
+        res = await ws.send_json(result)
+    except Exception as e:
+        res = await ws.send_json({"status": "error", "message": str(e)})
 
 
 @app.post("/run")
@@ -83,9 +143,10 @@ def run(data: MeterRequest):
     def stream():
         run_start = default_timer()
         yield (
-            json.dumps(
+            "data: "
+            + json.dumps(
                 {
-                    "status": "running",
+                    "status": "started",
                     "parameters": {
                         "START_DATE": start_date.strftime("%Y-%m-%d %H:%M:%S"),
                         "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
@@ -93,14 +154,18 @@ def run(data: MeterRequest):
                     },
                 }
             )
-            + "\n"
+            + "\n\n"
         )
         try:
             while simulate_thread.is_alive():
                 state = fetch_next_state()
                 if state is None:
                     continue
-                yield json.dumps({"status": "running", "state": state}) + "\n"
+                yield (
+                    "data: "
+                    + json.dumps({"status": "running", "state": state})
+                    + "\n\n"
+                )
             if simulate_thread.exception is not None:
                 raise simulate_thread.exception
             result = json.dumps(
@@ -114,12 +179,11 @@ def run(data: MeterRequest):
                         "END_DATE": end_date.strftime("%Y-%m-%d %H:%M:%S"),
                         "NUM_METERS": num_meters,
                     },
-                    "states": list(immutable_iter()),
                 }
             )
-            yield result + "\n"
+            yield "data: " + result + "\n\n"
 
         except Exception as e:
-            yield json.dumps({"status": "error", "message": str(e)}) + "\n"
+            yield "data: " + json.dumps({"status": "error", "message": str(e)}) + "\n\n"
 
-    return StreamingResponse(stream())
+    return StreamingResponse(stream(), media_type="text/event-stream")

@@ -1,23 +1,10 @@
-import pickle
 from typing import Dict, List, Tuple
 
-from src.config import DEVIATION, NUM_METERS
+from src.config import DEVIATION
 from src.core.data_generator import mk_grid_state_generator, mk_instance_generator
 from src.core.optimizer import mk_choose_best_offers_function
 from src.core.util import date_range, fmt_grid_state
 from src.types import SimulateFunction
-
-
-def calc_sizeof_offers_msg(n):
-    example_offer = {
-        "source": ("localhost", 94065),
-        "price": 0.0,
-        "amount": 0.0,
-    }
-    return n * len(pickle.dumps(example_offer))
-
-
-offers_msg_size = calc_sizeof_offers_msg(NUM_METERS)
 
 
 class Meter:

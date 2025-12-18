@@ -1,7 +1,5 @@
+import uvicorn
 from src.server import app
 
-# add other functionality to api
-
-
 if __name__ == "__main__":
-    print(app)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, timeout_keep_alive=300)
