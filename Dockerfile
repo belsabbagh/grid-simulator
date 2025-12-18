@@ -1,6 +1,23 @@
-FROM python:3.13-slim-bookworm
-WORKDIR /code
-COPY ./requirements.txt /code/requirements.txt
-RUN pip install --no-cache-dir -r /code/requirements.txt
-COPY . /code
-CMD ["fastapi", "run", "main.py", "--port", "5515"]
+FROM golang:1.25-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# CGO_ENABLED=0 is a common best practice for cross-system compatibility
+# and statically linked binaries.
+RUN CGO_ENABLED=0 go build -o /energy-trading-simulator ./main.go
+
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /root/
+
+COPY --from=builder /energy-trading-simulator .
+
+EXPOSE 5515
+
+CMD ["./energy-trading-simulator"]
+
