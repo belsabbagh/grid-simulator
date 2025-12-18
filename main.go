@@ -4,8 +4,12 @@ import (
 	"encoding/json"
 	"energy-trading-simulator/simulator"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type RunRequest struct {
@@ -73,7 +77,25 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Warning: No .env file found, using system env or defaults")
+	}
+
+	// 2. Get the PORT variable
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "5515" // Default fallback
+		log.Printf("PORT not set in .env, defaulting to %s", port)
+	}
+
 	http.HandleFunc("/run", runHandler)
-	fmt.Println("SSE Server starting on :8080...")
-	http.ListenAndServe(":8080", nil)
+
+	// 3. Use the port variable
+	address := ":" + port
+	log.Printf("SSE Server starting on %s...\n", address)
+
+	if err := http.ListenAndServe(address, nil); err != nil {
+		log.Fatal(err)
+	}
 }
