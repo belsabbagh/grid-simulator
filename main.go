@@ -77,6 +77,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		flusher.Flush()
+		time.Sleep(50 * time.Millisecond)
 	}
 
 	fmt.Fprintf(w, "data: {\"status\": \"done\"}\n\n")
