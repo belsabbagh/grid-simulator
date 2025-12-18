@@ -18,6 +18,11 @@ type RunRequest struct {
 }
 
 func runHandler(w http.ResponseWriter, r *http.Request) {
+	timeoutStr := os.Getenv("SIMULATION_STEP_DELAY_MS")
+	delay, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		delay = 100 * time.Millisecond
+	}
 	if r.Method != http.MethodPost && r.Method != http.MethodOptions {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -80,7 +85,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		flusher.Flush()
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(delay * time.Millisecond)
 	}
 
 	fmt.Fprintf(w, "data: {\"status\": \"done\"}\n\n")
