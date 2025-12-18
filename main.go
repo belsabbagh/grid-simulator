@@ -18,8 +18,15 @@ type RunRequest struct {
 }
 
 func runHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	if r.Method != http.MethodPost && r.Method != http.MethodOptions {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
@@ -42,7 +49,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	layout := "2006-01-02T15:04"
 	startDate, err := time.Parse(layout, req.StartDate)
 	if err != nil {
-		fmt.Println("Error parsing time:", err)
+		http.Error(w, fmt.Sprintf("Time Parsing error: %s", err), http.StatusUnprocessableEntity)
 		return
 	}
 	endDate := startDate.Add(24 * time.Hour)
@@ -60,7 +67,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 		jsonData, err := json.Marshal(payload)
 		if err != nil {
-			fmt.Printf("Error marshaling state: %v\n", err)
+			log.Printf("Error marshaling state: %v\n", err)
 			continue
 		}
 
