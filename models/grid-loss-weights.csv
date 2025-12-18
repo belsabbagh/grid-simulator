@@ -1,0 +1,4 @@
+layer_name,type,index,value
+dense,weight,0,0.075463645
+dense,weight,1,2.7396713e-05
+dense,bias,0,-0.0079290755
