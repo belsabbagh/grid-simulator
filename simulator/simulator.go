@@ -42,10 +42,9 @@ type MeterState struct {
 }
 
 type SimulationState struct {
-	Time      string              `json:"time"`
-	Meters    []MeterState        `json:"meters"`
-	GridState map[string]float64  `json:"grid_state"`
-	Analytics SimulationAnalytics `json:"analytics"`
+	Time      string             `json:"time"`
+	Meters    []MeterState       `json:"meters"`
+	GridState map[string]float64 `json:"grid_state"`
 }
 
 type SimulationAnalytics struct {
