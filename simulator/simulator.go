@@ -83,21 +83,15 @@ func allHaveSurplus(meters []MeterState) bool {
 
 func countAvailableSurplusMeters(meters []MeterState) int64 {
 	activeProviders := make(map[int64]struct{})
-	for _, m := range meters {
-		if m.From != nil {
-			activeProviders[*m.From] = struct{}{}
-		}
-	}
+
 	count := int64(0)
 	for _, m := range meters {
-		_, isProviding := activeProviders[m.ID]
-
-		if m.Surplus > 0 && !isProviding {
-			count++
+		if m.Surplus > 0 {
+			count += 1
+			continue
 		}
 	}
-
-	return count
+	return count - int64(len(activeProviders))
 }
 
 func NewSimulationAnalytics() *SimulationAnalytics {
@@ -113,7 +107,7 @@ func NewSimulationAnalytics() *SimulationAnalytics {
 func (sa *SimulationAnalytics) Aggregate(meters []MeterState) *SimulationAnalytics {
 	sa.TotalStates += 1
 	available := countAvailableSurplusMeters(meters)
-	if available > 0 && !allHaveSurplus(meters) {
+	if available > 0 && available != int64(len(meters)) {
 
 		sa.StatesMissedOutOnTrades += 1
 	}
