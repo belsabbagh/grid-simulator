@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"energy-trading-simulator/simulator"
 	"fmt"
@@ -17,6 +20,18 @@ type RunRequest struct {
 	StartDate string `json:"startDate"`
 }
 
+func compressor(data any) string {
+	jsonData, _ := json.Marshal(data)
+
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	zw.Write(jsonData)
+	zw.Close()
+
+	encodedData := base64.StdEncoding.EncodeToString(buf.Bytes())
+	return encodedData
+}
+
 func runHandler(w http.ResponseWriter, r *http.Request) {
 	timeoutStr := os.Getenv("SIMULATION_STEP_DELAY_MS")
 	delay, err := time.ParseDuration(timeoutStr)
@@ -29,6 +44,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
@@ -63,13 +79,19 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 	for state := range sim {
 		analytics.Aggregate(state.Meters)
+		compressed := &simulator.CompressedSimulationState{
+			Time:      state.Time,
+			Meters:    compressor(state.Meters),
+			GridState: state.GridState,
+		}
+
 		payload := struct {
-			Status    string                        `json:"status"`
-			State     simulator.SimulationState     `json:"state"`
-			Analytics simulator.SimulationAnalytics `json:"analytics"`
+			Status    string                              `json:"status"`
+			State     simulator.CompressedSimulationState `json:"state"`
+			Analytics simulator.SimulationAnalytics       `json:"analytics"`
 		}{
 			Status:    "running",
-			State:     state,
+			State:     *compressed,
 			Analytics: *analytics,
 		}
 
@@ -98,16 +120,13 @@ func main() {
 		log.Println("Warning: No .env file found, using system env or defaults")
 	}
 
-	// 2. Get the PORT variable
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "5515" // Default fallback
+		port = "5515"
 		log.Printf("PORT not set in .env, defaulting to %s", port)
 	}
 
 	http.HandleFunc("/run", runHandler)
-
-	// 3. Use the port variable
 	address := ":" + port
 	log.Printf("SSE Server starting on %s...\n", address)
 

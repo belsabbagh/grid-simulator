@@ -55,6 +55,12 @@ type SimulationState struct {
 	GridState map[string]float64 `json:"grid"`
 }
 
+type CompressedSimulationState struct {
+	Time      string             `json:"time"`
+	Meters    string             `json:"meters"`
+	GridState map[string]float64 `json:"grid"`
+}
+
 type SimulationAnalytics struct {
 	EnergyWastedBefore      float64 `json:"Energy Wasted Before"`
 	EnergyWastedAfter       float64 `json:"Energy Wasted After"`
