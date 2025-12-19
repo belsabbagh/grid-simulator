@@ -44,7 +44,7 @@ type MeterState struct {
 	ID                 int64   `json:"id"`
 	Surplus            float64 `json:"surplus"`
 	Purchased          float64 `json:"purchased"`
-	From               *int64  `json:"in_trade"`
+	From               *int64  `json:"from"`
 	ParticipationCount int64   `json:"participation_count"`
 }
 
@@ -137,12 +137,17 @@ func FmtGridState(gridState []float64) map[string]float64 {
 
 	for i, param := range GridStateParams {
 		if i < len(gridState) {
-			result[param] = gridState[i]
+			result[param] = roundTo(gridState[i], 2)
 		}
 	}
 
 	return result
 }
+
+func roundTo(n float64, decimals uint32) float64 {
+	return math.Round(n*math.Pow(10, float64(decimals))) / math.Pow(10, float64(decimals))
+}
+
 func mapMeterStates(meters map[string]*Meter, displayIds map[string]int64, trades map[string]*string, transfers map[string]float64) []MeterState {
 	var results []MeterState
 	for id, m := range meters {
@@ -154,8 +159,8 @@ func mapMeterStates(meters map[string]*Meter, displayIds map[string]int64, trade
 
 		results = append(results, MeterState{
 			ID:                 displayIds[id],
-			Surplus:            m.Surplus,
-			Purchased:          transfers[id],
+			Surplus:            roundTo(m.Surplus, 2),
+			Purchased:          roundTo(transfers[id], 2),
 			From:               inTrade,
 			ParticipationCount: m.SoldCount,
 		})
