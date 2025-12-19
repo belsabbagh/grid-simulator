@@ -7,6 +7,13 @@ import (
 	"time"
 )
 
+func safeDivide(numerator, denominator float64) float64 {
+	if denominator == 0 {
+		return 0
+	}
+	return numerator / denominator
+}
+
 type Meter struct {
 	ID        string
 	Surplus   float64
@@ -50,8 +57,21 @@ type SimulationState struct {
 type SimulationAnalytics struct {
 	EnergyWastedBefore      float64 `json:"Energy Wasted Before"`
 	EnergyWastedAfter       float64 `json:"Energy Wasted After"`
+	SavedEnergy             float64 `json:"Saved Energy"`
 	StatesMissedOutOnTrades int64   `json:"States missed out on trades"`
 	TotalStates             int64   `json:"Total States"`
+}
+
+func allHaveSurplus(meters []MeterState) bool {
+	allSurplus := true
+
+	for _, m := range meters {
+		if m.Surplus < 0 {
+			allSurplus = false
+			break
+		}
+	}
+	return allSurplus
 }
 
 func countAvailableSurplusMeters(meters []MeterState) int64 {
@@ -77,6 +97,7 @@ func NewSimulationAnalytics() *SimulationAnalytics {
 	return &SimulationAnalytics{
 		EnergyWastedBefore:      0,
 		EnergyWastedAfter:       0,
+		SavedEnergy:             0,
 		StatesMissedOutOnTrades: 0,
 		TotalStates:             0,
 	}
@@ -85,7 +106,7 @@ func NewSimulationAnalytics() *SimulationAnalytics {
 func (sa *SimulationAnalytics) Aggregate(meters []MeterState) *SimulationAnalytics {
 	sa.TotalStates += 1
 	available := countAvailableSurplusMeters(meters)
-	if available > 0 {
+	if available > 0 && !allHaveSurplus(meters) {
 
 		sa.StatesMissedOutOnTrades += 1
 	}
@@ -99,6 +120,7 @@ func (sa *SimulationAnalytics) Aggregate(meters []MeterState) *SimulationAnalyti
 			sa.EnergyWastedAfter += remaining
 		}
 	}
+	sa.SavedEnergy = safeDivide(sa.EnergyWastedBefore-sa.EnergyWastedAfter, sa.EnergyWastedBefore)
 
 	return sa
 }

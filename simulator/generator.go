@@ -25,7 +25,7 @@ func PrepareGenerationLookup(start time.Time, end time.Time, increment time.Dura
 			totalDaylight := st["sunset"].Value.Sub(st["sunrise"].Value).Seconds()
 			elapsed := t.Sub(st["sunrise"].Value).Seconds()
 			intensity := math.Sin(math.Pi * (elapsed / totalDaylight))
-			power = intensity * 1.2
+			power = intensity
 
 		}
 		gen[t] = power
