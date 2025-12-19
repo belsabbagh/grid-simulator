@@ -43,16 +43,16 @@ type Choice struct {
 
 type MeterState struct {
 	ID                 int64   `json:"id"`
-	Surplus            float64 `json:"surplus"`
-	Purchased          float64 `json:"purchased"`
-	From               *int64  `json:"from"`
-	ParticipationCount int64   `json:"participation_count"`
+	Surplus            float64 `json:"s"`
+	Purchased          float64 `json:"p"`
+	From               *int64  `json:"f"`
+	ParticipationCount int64   `json:"c"`
 }
 
 type SimulationState struct {
 	Time      string             `json:"time"`
 	Meters    []MeterState       `json:"meters"`
-	GridState map[string]float64 `json:"grid_state"`
+	GridState map[string]float64 `json:"grid"`
 }
 
 type SimulationAnalytics struct {
