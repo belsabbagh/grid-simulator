@@ -122,6 +122,10 @@ func (sa *SimulationAnalytics) Aggregate(meters []MeterState) *SimulationAnalyti
 	}
 	sa.SavedEnergy = safeDivide(sa.EnergyWastedBefore-sa.EnergyWastedAfter, sa.EnergyWastedBefore)
 
+	sa.SavedEnergy = roundTo(sa.SavedEnergy, 2)
+	sa.EnergyWastedBefore = roundTo(sa.EnergyWastedBefore, 2)
+	sa.EnergyWastedAfter = roundTo(sa.EnergyWastedAfter, 2)
+
 	return sa
 }
 
@@ -145,7 +149,9 @@ func FmtGridState(gridState []float64) map[string]float64 {
 }
 
 func roundTo(n float64, decimals uint32) float64 {
-	return math.Round(n*math.Pow(10, float64(decimals))) / math.Pow(10, float64(decimals))
+	s := fmt.Sprintf("%.*f", decimals, n)
+	res, _ := strconv.ParseFloat(s, 64)
+	return res
 }
 
 func mapMeterStates(meters map[string]*Meter, displayIds map[string]int64, trades map[string]*string, transfers map[string]float64) []MeterState {
