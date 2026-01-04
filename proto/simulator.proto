@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package simulator;
+
+option go_package = "./proto";
+
+service SimulatorService {
+  rpc RunSimulation(RunRequest) returns (stream SimulationResponse);
+}
+
+message RunRequest {
+  int64 num_meters = 1;
+  string start_date = 2;
+}
+
+enum SimulationStatus {
+  IDLE = 0;
+  RUNNING = 1;
+  FINISHED = 2;
+}
+
+message SimulationResponse {
+  SimulationStatus status = 1;
+  SimulationState state = 2;
+  SimulationAnalytics analytics = 3;
+}
+
+message MeterState {
+  int64 id = 1;
+  double surplus = 2;
+  double purchased = 3;
+  optional int64 from_id = 4; 
+  int64 participation_count = 5;
+}
+
+message SimulationState {
+  string time = 1;
+  repeated MeterState meters = 2;
+  map<string, double> grid_state = 3;
+}
+
+message SimulationAnalytics {
+  double energy_wasted_before = 1;
+  double energy_wasted_after = 2;
+  double saved_energy = 3;
+  int64 states_missed_out_on_trades = 4;
+  int64 total_states = 5;
+}
+
