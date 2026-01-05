@@ -19,7 +19,7 @@ type Meter struct {
 	ID                 int64   `json:"id"`
 	Surplus            float64 `json:"s"`
 	Purchased          float64 `json:"p"`
-	From               *int64  `json:"f"`
+	From               string  `json:"f"`
 	ParticipationCount int64   `json:"c"`
 }
 
@@ -174,9 +174,9 @@ func roundTo(n float64, decimals uint32) float64 {
 func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfers map[string]float64) []MeterState {
 	var results []MeterState
 	for id, m := range meters {
-		var inTrade *int64
+		inTrade := ""
 		if sellerID, ok := trades[id]; ok && sellerID != nil {
-			inTrade = &sellerID
+			inTrade = sellerID
 		}
 
 		results = append(results, MeterState{
