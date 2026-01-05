@@ -87,7 +87,7 @@ func missedPotentialTrade(meters []MeterState) bool {
 	cond := false
 
 	for _, m := range meters {
-		if m.From == nil && m.Surplus < 0 {
+		if m.From == "" && m.Surplus < 0 {
 			cond = true
 			break
 		}
@@ -103,7 +103,7 @@ func countAvailableSurplusMeters(meters []MeterState) int64 {
 			surplusCount += 1
 			continue
 		}
-		if m.From != nil {
+		if m.From != "" {
 			sellerCount += 1
 		}
 
