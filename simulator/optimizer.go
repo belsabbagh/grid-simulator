@@ -90,7 +90,7 @@ func MkPredictFunction(effModelPath, durModelPath string) func(float64, float64,
 }
 
 // MkFitnessFunction calculates the fitness score
-func MkFitnessFunction(effPath string, durPath string, weights []float64) func(float64, Meter, []float64) float64 {
+func MkFitnessFunction(effPath string, durPath string, weights []float64) func(float64, *Meter, []float64) float64 {
 	predict := MkPredictFunction(effPath, durPath)
 
 	if weights == nil {
@@ -143,7 +143,7 @@ func ChooseBestOffers(amountNeeded float64, offers []*Meter, metrics []float64, 
 	return scored
 }
 
-type FitnessFunc func(amountNeeded float64, offer Meter, metrics []float64) float64
+type FitnessFunc func(amountNeeded float64, offer *Meter, metrics []float64) float64
 type BestOffersFunc func(amountNeeded float64, offers []*Meter, metrics []float64, count int) []ScoredOffer
 
 func MkChooseBestOffersFunction(
