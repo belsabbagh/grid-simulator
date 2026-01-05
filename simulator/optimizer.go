@@ -13,7 +13,7 @@ import (
 )
 
 type ScoredOffer struct {
-	Offer Offer
+	Offer Meter
 	Score float64
 }
 
@@ -97,7 +97,7 @@ func MkFitnessFunction(effPath string, durPath string, weights []float64) func(f
 		weights = []float64{1, -1, 1, -1, 1, -1}
 	}
 
-	return func(amountNeeded float64, offer Offer, metrics []float64) float64 {
+	return func(amountNeeded float64, offer Meter, metrics []float64) float64 {
 		eff, dur := predict(metrics[0], metrics[1], metrics[2], metrics[3], offer.Amount)
 
 		// Placeholder for calculate_transaction_score logic
@@ -121,7 +121,7 @@ func MkFitnessFunction(effPath string, durPath string, weights []float64) func(f
 	}
 }
 
-func ChooseBestOffers(amountNeeded float64, offers []Offer, metrics []float64, count int) []ScoredOffer {
+func ChooseBestOffers(amountNeeded float64, offers []Meter, metrics []float64, count int) []ScoredOffer {
 	fitness := MkFitnessFunction("eff.json", "dur.json", nil)
 
 	// Shuffle and Subset (Random Sample)
@@ -143,8 +143,8 @@ func ChooseBestOffers(amountNeeded float64, offers []Offer, metrics []float64, c
 	return scored
 }
 
-type FitnessFunc func(amountNeeded float64, offer Offer, metrics []float64) float64
-type BestOffersFunc func(amountNeeded float64, offers []Offer, metrics []float64, count int) []ScoredOffer
+type FitnessFunc func(amountNeeded float64, offer Meter, metrics []float64) float64
+type BestOffersFunc func(amountNeeded float64, offers []Meter, metrics []float64, count int) []ScoredOffer
 
 func MkChooseBestOffersFunction(
 	effPath, durPath, qualPath string,
@@ -153,7 +153,7 @@ func MkChooseBestOffersFunction(
 
 	fitness := MkFitnessFunction(effPath, durPath, weights)
 
-	return func(amountNeeded float64, offers []Offer, metrics []float64, count int) []ScoredOffer {
+	return func(amountNeeded float64, offers []Meter, metrics []float64, count int) []ScoredOffer {
 		scoredOffers := make([]ScoredOffer, len(offers))
 		for i, offer := range offers {
 			scoredOffers[i] = ScoredOffer{

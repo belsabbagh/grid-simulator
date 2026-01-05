@@ -206,7 +206,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 		for t := startDate; t.Before(endDate); t = t.Add(increment) {
 			gridState := gridStateGenerator(t)
-			var offers []Meter
+			var offers []*Meter
 
 			for _, m := range meters {
 				gen, con := dataGenerator(t)
