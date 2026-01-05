@@ -13,7 +13,7 @@ import (
 )
 
 type ScoredOffer struct {
-	Offer Meter
+	Offer *Meter
 	Score float64
 }
 
@@ -97,7 +97,7 @@ func MkFitnessFunction(effPath string, durPath string, weights []float64) func(f
 		weights = []float64{1, -1, 1, -1, 1, -1}
 	}
 
-	return func(amountNeeded float64, offer Meter, metrics []float64) float64 {
+	return func(amountNeeded float64, offer *Meter, metrics []float64) float64 {
 		eff, dur := predict(metrics[0], metrics[1], metrics[2], metrics[3], offer.Surplus)
 
 		// Placeholder for calculate_transaction_score logic
