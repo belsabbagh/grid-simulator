@@ -231,7 +231,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 				choices := tradeChooser(m.Surplus, offers, gridState, len(offers)-1)
 				for _, c := range choices {
-					sid := c.Offer.Source
+					sid := c.Offer.ID
 					requests[sid] = append(requests[sid], Request{
 						Meter: *m, Score: c.Score,
 					})

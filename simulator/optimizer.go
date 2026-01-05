@@ -90,7 +90,7 @@ func MkPredictFunction(effModelPath, durModelPath string) func(float64, float64,
 }
 
 // MkFitnessFunction calculates the fitness score
-func MkFitnessFunction(effPath string, durPath string, weights []float64) func(float64, Offer, []float64) float64 {
+func MkFitnessFunction(effPath string, durPath string, weights []float64) func(float64, Meter, []float64) float64 {
 	predict := MkPredictFunction(effPath, durPath)
 
 	if weights == nil {
@@ -121,7 +121,7 @@ func MkFitnessFunction(effPath string, durPath string, weights []float64) func(f
 	}
 }
 
-func ChooseBestOffers(amountNeeded float64, offers []Meter, metrics []float64, count int) []ScoredOffer {
+func ChooseBestOffers(amountNeeded float64, offers []*Meter, metrics []float64, count int) []ScoredOffer {
 	fitness := MkFitnessFunction("eff.json", "dur.json", nil)
 
 	// Shuffle and Subset (Random Sample)
@@ -144,7 +144,7 @@ func ChooseBestOffers(amountNeeded float64, offers []Meter, metrics []float64, c
 }
 
 type FitnessFunc func(amountNeeded float64, offer Meter, metrics []float64) float64
-type BestOffersFunc func(amountNeeded float64, offers []Meter, metrics []float64, count int) []ScoredOffer
+type BestOffersFunc func(amountNeeded float64, offers []*Meter, metrics []float64, count int) []ScoredOffer
 
 func MkChooseBestOffersFunction(
 	effPath, durPath, qualPath string,
@@ -153,7 +153,7 @@ func MkChooseBestOffersFunction(
 
 	fitness := MkFitnessFunction(effPath, durPath, weights)
 
-	return func(amountNeeded float64, offers []Meter, metrics []float64, count int) []ScoredOffer {
+	return func(amountNeeded float64, offers []*Meter, metrics []float64, count int) []ScoredOffer {
 		scoredOffers := make([]ScoredOffer, len(offers))
 		for i, offer := range offers {
 			scoredOffers[i] = ScoredOffer{
