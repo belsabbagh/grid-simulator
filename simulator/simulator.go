@@ -44,10 +44,10 @@ type Request struct {
 }
 
 type MeterState struct {
-	ID                 int64   `json:"id"`
+	ID                 string  `json:"id"`
 	Surplus            float64 `json:"s"`
 	Purchased          float64 `json:"p"`
-	From               *int64  `json:"f"`
+	From               string  `json:"f"`
 	ParticipationCount int64   `json:"c"`
 }
 
@@ -184,7 +184,7 @@ func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfe
 			Surplus:            roundTo(m.Surplus, 2),
 			Purchased:          roundTo(transfers[id], 2),
 			From:               inTrade,
-			ParticipationCount: m.SoldCount,
+			ParticipationCount: m.ParticipationCount,
 		})
 	}
 	return results
@@ -195,7 +195,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 	go func() {
 		defer close(out)
-		tradeChooser := MkChooseBestOffersFunction("models/grid-loss-weights.csv", "models/duration-weights.csv", "models/grid-loss.json", 3, make([]float64, 0))
+		tradeChooser := MkChooseBestOffersFunction("models/grid-loss-weights.csv", "models/duration-weights.csv", "models/grid-loss.json", make([]float64, 0))
 		dataGenerator := MkInstanceGenerator(startDate, endDate, increment, 0.5)
 		gridStateGenerator := MkGridStateGenerator()
 		meters := make(map[string]*Meter)
@@ -252,7 +252,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				})
 
 				buyerID := buyers[0].Meter.ID
-				meters[sellerID].SoldCount++
+				meters[sellerID].ParticipationCount++
 				trades[buyerID] = &sellerID
 				gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * increment.Seconds()
 				transferAmount := math.Min(
