@@ -16,7 +16,7 @@ func safeDivide(numerator, denominator float64) float64 {
 }
 
 type Meter struct {
-	ID                 int64   `json:"id"`
+	ID                 string  `json:"id"`
 	Surplus            float64 `json:"s"`
 	Purchased          float64 `json:"p"`
 	From               string  `json:"f"`
