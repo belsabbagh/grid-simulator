@@ -144,17 +144,16 @@ func ChooseBestOffers(amountNeeded float64, offers []Offer, metrics []float64, c
 }
 
 type FitnessFunc func(amountNeeded float64, offer Offer, metrics []float64) float64
-type BestOffersFunc func(amountNeeded float64, offers []Offer, metrics []float64) []ScoredOffer
+type BestOffersFunc func(amountNeeded float64, offers []Offer, metrics []float64, count int) []ScoredOffer
 
 func MkChooseBestOffersFunction(
 	effPath, durPath, qualPath string,
-	count int,
 	weights []float64,
 ) BestOffersFunc {
 
 	fitness := MkFitnessFunction(effPath, durPath, weights)
 
-	return func(amountNeeded float64, offers []Offer, metrics []float64) []ScoredOffer {
+	return func(amountNeeded float64, offers []Offer, metrics []float64, count int) []ScoredOffer {
 		scoredOffers := make([]ScoredOffer, len(offers))
 		for i, offer := range offers {
 			scoredOffers[i] = ScoredOffer{

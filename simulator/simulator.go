@@ -16,9 +16,11 @@ func safeDivide(numerator, denominator float64) float64 {
 }
 
 type Meter struct {
-	ID        string
-	Surplus   float64
-	SoldCount int64
+	ID                 int64   `json:"id"`
+	Surplus            float64 `json:"s"`
+	Purchased          float64 `json:"p"`
+	From               *int64  `json:"f"`
+	ParticipationCount int64   `json:"c"`
 }
 
 func NewMeter(id string) *Meter {
@@ -36,9 +38,9 @@ type Offer struct {
 	ParticipationCount int64
 }
 
-type Choice struct {
-	Offer   Offer
-	Fitness float64
+type Request struct {
+	Meter Meter
+	Score float64
 }
 
 type MeterState struct {
@@ -169,17 +171,16 @@ func roundTo(n float64, decimals uint32) float64 {
 	return res
 }
 
-func mapMeterStates(meters map[string]*Meter, displayIds map[string]int64, trades map[string]*string, transfers map[string]float64) []MeterState {
+func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfers map[string]float64) []MeterState {
 	var results []MeterState
 	for id, m := range meters {
 		var inTrade *int64
 		if sellerID, ok := trades[id]; ok && sellerID != nil {
-			val := displayIds[*sellerID]
-			inTrade = &val
+			inTrade = &sellerID
 		}
 
 		results = append(results, MeterState{
-			ID:                 displayIds[id],
+			ID:                 id,
 			Surplus:            roundTo(m.Surplus, 2),
 			Purchased:          roundTo(transfers[id], 2),
 			From:               inTrade,
@@ -200,9 +201,8 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 		meters := make(map[string]*Meter)
 		meterDisplayIds := make(map[string]int64)
 		for i := range n {
-			id := fmt.Sprintf("%d", i)
+			id := fmt.Sprintf("%d", i+1)
 			meters[id] = NewMeter(id)
-			meterDisplayIds[id] = i + 1
 		}
 
 		for t := startDate; t.Before(endDate); t = t.Add(increment) {
@@ -213,18 +213,14 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				gen, con := dataGenerator(t)
 				m.ReadEnv(gen, con)
 				if m.Surplus > 0 {
-					offers = append(offers, Offer{
-						Source:             id,
-						Amount:             m.Surplus,
-						ParticipationCount: m.SoldCount,
-					})
+					offers = append(offers, m)
 				}
 			}
 
 			if len(offers) == 0 {
-				meterStates := mapMeterStates(meters, meterDisplayIds, nil, nil)
+				meterStates := mapMeterStates(meters, nil, nil)
 				out <- SimulationState{
-					Time:      t.Format(time.RFC3339),
+					Time:      t.Format("15:04:05"),
 					Meters:    meterStates,
 					GridState: FmtGridState(gridState),
 				}
@@ -232,7 +228,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 			}
 
 			trades := make(map[string]*string)
-			requests := make(map[string][]Choice)
+			requests := make(map[string][]Request)
 
 			for id, m := range meters {
 				if m.Surplus > 0 {
@@ -240,14 +236,11 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 					continue
 				}
 
-				choices := tradeChooser(m.Surplus, offers, gridState)
-				if len(choices) > 0 {
-					bestChoice := choices[0]
-					sellerID := bestChoice.Offer.Source
-					trades[id] = &sellerID
-					requests[sellerID] = append(requests[sellerID], Choice{
-						Offer:   Offer{Source: id},
-						Fitness: bestChoice.Score,
+				choices := tradeChooser(m.Surplus, offers, gridState, len(offers)-1)
+				for _, c := range choices {
+					sid := c.Offer.Source
+					requests[sid] = append(requests[sid], Request{
+						Meter: m, Score: c.Score,
 					})
 				}
 			}
@@ -255,12 +248,12 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 			transfers := make(map[string]float64)
 			for sellerID, buyers := range requests {
 				sort.Slice(buyers, func(i, j int) bool {
-					return buyers[i].Fitness > buyers[j].Fitness
+					return buyers[i].Score > buyers[j].Score
 				})
 
-				buyerID := buyers[0].Offer.Source
+				buyerID := buyers[0].Meter.ID
 				meters[sellerID].SoldCount++
-
+				trades[buyerID] = &sellerID
 				gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * increment.Seconds()
 				transferAmount := math.Min(
 					math.Min(meters[sellerID].Surplus, gridLimit),
@@ -271,7 +264,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				transfers[sellerID] = -transferAmount
 			}
 
-			meterStates := mapMeterStates(meters, meterDisplayIds, trades, transfers)
+			meterStates := mapMeterStates(meters, trades, transfers)
 
 			out <- SimulationState{
 				Time:      t.Format("15:04:05"),
