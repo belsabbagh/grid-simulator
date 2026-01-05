@@ -176,7 +176,7 @@ func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfe
 	for id, m := range meters {
 		inTrade := ""
 		if sellerID, ok := trades[id]; ok && sellerID != nil {
-			inTrade = &sellerID
+			inTrade = *sellerID
 		}
 
 		results = append(results, MeterState{
@@ -199,7 +199,6 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 		dataGenerator := MkInstanceGenerator(startDate, endDate, increment, 0.5)
 		gridStateGenerator := MkGridStateGenerator()
 		meters := make(map[string]*Meter)
-		meterDisplayIds := make(map[string]int64)
 		for i := range n {
 			id := fmt.Sprintf("%d", i+1)
 			meters[id] = NewMeter(id)
@@ -207,9 +206,9 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 		for t := startDate; t.Before(endDate); t = t.Add(increment) {
 			gridState := gridStateGenerator(t)
-			var offers []Offer
+			var offers []Meter
 
-			for id, m := range meters {
+			for _, m := range meters {
 				gen, con := dataGenerator(t)
 				m.ReadEnv(gen, con)
 				if m.Surplus > 0 {
@@ -240,7 +239,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				for _, c := range choices {
 					sid := c.Offer.Source
 					requests[sid] = append(requests[sid], Request{
-						Meter: m, Score: c.Score,
+						Meter: *m, Score: c.Score,
 					})
 				}
 			}
