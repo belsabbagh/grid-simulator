@@ -32,12 +32,6 @@ func (m *Meter) ReadEnv(gen, con float64) float64 {
 	return m.Surplus
 }
 
-type Offer struct {
-	Source             string
-	Amount             float64
-	ParticipationCount int64
-}
-
 type Request struct {
 	Meter Meter
 	Score float64
