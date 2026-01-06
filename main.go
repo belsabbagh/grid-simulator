@@ -20,6 +20,12 @@ type RunRequest struct {
 	StartDate string `json:"startDate"`
 }
 
+type Response struct {
+	Status    string                              `json:"status"`
+	State     simulator.CompressedSimulationState `json:"state"`
+	Analytics simulator.SimulationAnalytics       `json:"analytics"`
+}
+
 func compressor(data any) string {
 	jsonData, _ := json.Marshal(data)
 
@@ -44,7 +50,6 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
@@ -85,11 +90,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 			GridState: state.GridState,
 		}
 
-		payload := struct {
-			Status    string                              `json:"status"`
-			State     simulator.CompressedSimulationState `json:"state"`
-			Analytics simulator.SimulationAnalytics       `json:"analytics"`
-		}{
+		payload := Response{
 			Status:    "running",
 			State:     *compressed,
 			Analytics: *analytics,
