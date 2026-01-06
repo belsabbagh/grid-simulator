@@ -1,19 +1,25 @@
-# start by pulling the python image
-FROM python:3.8-alpine
-
-# copy the requirements file into the image
-COPY ./requirements.txt /app/requirements.txt
-
-# switch working directory
+FROM golang:1.25-alpine AS builder
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
 
-# install the dependencies and packages in the requirements file
-RUN pip install -r requirements.txt
+COPY . .
 
-# copy every content from the local file to the image
-COPY . /app
+# CGO_ENABLED=0 is a common best practice for cross-system compatibility
+# and statically linked binaries.
+RUN CGO_ENABLED=0 go build -o /energy-trading-simulator ./main.go
 
-# configure the container to run in an executed manner
-ENTRYPOINT [ "python" ]
+FROM alpine:latest
 
-CMD ["main.py" ]
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /root/
+
+COPY --from=builder /energy-trading-simulator .
+COPY --from=builder /app/models ./models/
+COPY --from=builder /app/data ./data/
+
+EXPOSE 5515
+
+CMD ["./energy-trading-simulator"]
+
