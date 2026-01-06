@@ -17,12 +17,11 @@ type ScoredOffer struct {
 	Score float64
 }
 
-// Model represents the weight matrix extracted from Keras
 type Model struct {
 	Weights *mat.Dense
 }
 
-func LoadWeights(path string) (func([]float64) float64, error) {
+func LoadModel(path string) (func([]float64) float64, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -57,39 +56,37 @@ func LoadWeights(path string) (func([]float64) float64, error) {
 	}
 	weights := mat.NewVecDense(len(weightValues), weightValues)
 
-	return func(x []float64) float64 {
+	predict := func(x []float64) float64 {
 		if len(x) != len(weightValues) {
 			return 0.0
 		}
 		input := mat.NewVecDense(len(x), x)
 		res := mat.Dot(weights, input) + bias
 		return res
-	}, nil
+	}
+	return predict, nil
 }
 
-// MkPredictFunction calculates efficiency and duration
 func MkPredictFunction(effModelPath, durModelPath string) func(float64, float64, float64, float64, float64) (float64, float64) {
-	effModel, err := LoadWeights(effModelPath)
+	effModel, err := LoadModel(effModelPath)
 	if err != nil {
 		fmt.Printf("Error loading %s: %s", effModelPath, err)
 	}
-	durModel, err := LoadWeights(durModelPath)
+	durModel, err := LoadModel(durModelPath)
 	if err != nil {
 		fmt.Printf("Error loading %s: %s", durModelPath, err)
 	}
-	return func(gridLoad, gridTemp, voltage, intensity, amount float64) (float64, float64) {
-		// efficiency_model([[grid_load_gwh, grid_temp_c]])
-		gridLoss := effModel([]float64{gridLoad, gridTemp})
+	return func(gridLoad float64, gridTemp flost64, voltage float64, intensity float64, amount float64) (float64, float64) {
+		effModelParams := []float64{gridLoad, gridTemp}
+		gridLoss := effModel(effModelParams)
 		efficiency := (gridLoad - gridLoss) / gridLoad
-
-		// duration_model([[voltage_v, global_intensity_A, efficiency, transaction_amount_wh]])
-		duration := durModel([]float64{voltage, intensity, efficiency, amount})
+		durModelParams := []float64{voltage, intensity, efficiency, amount}
+		duration := durModel(durModelParams)
 
 		return efficiency, duration
 	}
 }
 
-// MkFitnessFunction calculates the fitness score
 func MkFitnessFunction(effPath string, durPath string, weights []float64) func(float64, *Meter, []float64) float64 {
 	predict := MkPredictFunction(effPath, durPath)
 
@@ -100,7 +97,6 @@ func MkFitnessFunction(effPath string, durPath string, weights []float64) func(f
 	return func(amountNeeded float64, offer *Meter, metrics []float64) float64 {
 		eff, dur := predict(metrics[0], metrics[1], metrics[2], metrics[3], offer.Surplus)
 
-		// Placeholder for calculate_transaction_score logic
 		quality := (offer.Surplus - amountNeeded) / (dur + 1e-6)
 
 		params := []float64{
@@ -112,7 +108,6 @@ func MkFitnessFunction(effPath string, durPath string, weights []float64) func(f
 			offer.Surplus,
 		}
 
-		// Manual dot product for weights
 		var score float64
 		for i := range weights {
 			score += weights[i] * params[i]
