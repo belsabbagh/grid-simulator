@@ -135,28 +135,6 @@ func MkFitnessFunction(effPath string, durPath string, weights []float64) func(f
 	}
 }
 
-func ChooseBestOffers(amountNeeded float64, offers []*Meter, metrics []float64, count int) []ScoredOffer {
-	fitness := MkFitnessFunction("eff.json", "dur.json", nil)
-
-	// Shuffle and Subset (Random Sample)
-	rand.Shuffle(len(offers), func(i, j int) { offers[i], offers[j] = offers[j], offers[i] })
-	if len(offers) > count {
-		offers = offers[:count]
-	}
-
-	scored := make([]ScoredOffer, len(offers))
-	for i, o := range offers {
-		scored[i] = ScoredOffer{Offer: o, Score: fitness(amountNeeded, o, metrics)}
-	}
-
-	// Sort descending
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].Score > scored[j].Score
-	})
-
-	return scored
-}
-
 type FitnessFunc func(amountNeeded float64, offer *Meter, metrics []float64) float64
 type BestOffersFunc func(amountNeeded float64, offers []*Meter, metrics []float64, count int) []ScoredOffer
 
