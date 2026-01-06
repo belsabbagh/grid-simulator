@@ -98,10 +98,10 @@ func MkPredictFunction(effModelPath, durModelPath string) func(float64, float64,
 	}
 	return func(gridLoad float64, gridTemp float64, voltage float64, intensity float64, amount float64) (float64, float64) {
 		effModelParams := []float64{gridLoad, gridTemp}
-		gridLoss := effModel.Predict(effModelParams)
+		gridLoss, err := effModel.Predict(effModelParams)
 		efficiency := (gridLoad - gridLoss) / gridLoad
 		durModelParams := []float64{voltage, intensity, efficiency, amount}
-		duration := durModel.Predict(durModelParams)
+		duration, err := durModel.Predict(durModelParams)
 
 		return efficiency, duration
 	}
