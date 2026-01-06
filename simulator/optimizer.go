@@ -76,7 +76,7 @@ func MkPredictFunction(effModelPath, durModelPath string) func(float64, float64,
 	if err != nil {
 		fmt.Printf("Error loading %s: %s", durModelPath, err)
 	}
-	return func(gridLoad float64, gridTemp flost64, voltage float64, intensity float64, amount float64) (float64, float64) {
+	return func(gridLoad float64, gridTemp float64, voltage float64, intensity float64, amount float64) (float64, float64) {
 		effModelParams := []float64{gridLoad, gridTemp}
 		gridLoss := effModel(effModelParams)
 		efficiency := (gridLoad - gridLoss) / gridLoad
