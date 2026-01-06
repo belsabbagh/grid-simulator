@@ -18,20 +18,28 @@ type ScoredOffer struct {
 }
 
 type Model struct {
-	Weights *mat.Dense
+	Weights *mat.VecDense
+	Bias    float64
 }
 
-func LoadModel(path string) (func([]float64) float64, error) {
+func NewModel() *Model {
+	return &Model{
+		Weights: nil,
+		Bias:    0.0,
+	}
+}
+
+func (m *Model) LoadFromCSV(path string) error {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer file.Close()
 
 	reader := csv.NewReader(file)
 
 	if _, err := reader.Read(); err != nil {
-		return nil, err
+		return err
 	}
 
 	var weightValues []float64
@@ -43,10 +51,13 @@ func LoadModel(path string) (func([]float64) float64, error) {
 			break
 		}
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		val, _ := strconv.ParseFloat(record[3], 64)
+		val, err := strconv.ParseFloat(record[3], 64)
+		if err != nil {
+			continue
+		}
 
 		if record[1] == "weight" {
 			weightValues = append(weightValues, val)
@@ -54,34 +65,43 @@ func LoadModel(path string) (func([]float64) float64, error) {
 			bias = val
 		}
 	}
-	weights := mat.NewVecDense(len(weightValues), weightValues)
 
-	predict := func(x []float64) float64 {
-		if len(x) != len(weightValues) {
-			return 0.0
-		}
-		input := mat.NewVecDense(len(x), x)
-		res := mat.Dot(weights, input) + bias
-		return res
+	m.Weights = mat.NewVecDense(len(weightValues), weightValues)
+	m.Bias = bias
+	return nil
+}
+
+func (m *Model) Predict(x []float64) (float64, error) {
+	if m.Weights == nil {
+		return 0, fmt.Errorf("uninitialized weights")
 	}
-	return predict, nil
+
+	if len(x) != m.Weights.Len() {
+		return 0, fmt.Errorf("dimension mismatch")
+	}
+
+	input := mat.NewVecDense(len(x), x)
+	res := mat.Dot(m.Weights, input) + m.Bias
+	return res, nil
 }
 
 func MkPredictFunction(effModelPath, durModelPath string) func(float64, float64, float64, float64, float64) (float64, float64) {
-	effModel, err := LoadModel(effModelPath)
+	effModel := NewModel()
+	durModel := NewModel()
+	err := effModel.LoadFromCSV(effModelPath)
 	if err != nil {
 		fmt.Printf("Error loading %s: %s", effModelPath, err)
 	}
-	durModel, err := LoadModel(durModelPath)
+	err = durModel.LoadFromCSV(durModelPath)
 	if err != nil {
 		fmt.Printf("Error loading %s: %s", durModelPath, err)
 	}
 	return func(gridLoad float64, gridTemp float64, voltage float64, intensity float64, amount float64) (float64, float64) {
 		effModelParams := []float64{gridLoad, gridTemp}
-		gridLoss := effModel(effModelParams)
+		gridLoss := effModel.Predict(effModelParams)
 		efficiency := (gridLoad - gridLoss) / gridLoad
 		durModelParams := []float64{voltage, intensity, efficiency, amount}
-		duration := durModel(durModelParams)
+		duration := durModel.Predict(durModelParams)
 
 		return efficiency, duration
 	}
