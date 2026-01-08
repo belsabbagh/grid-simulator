@@ -115,6 +115,11 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	flusher.Flush()
 }
 
+func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("ok"))
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -128,8 +133,9 @@ func main() {
 	}
 
 	http.HandleFunc("/run", runHandler)
+	http.HandleFunc("/health", healthCheckHandler)
 	address := ":" + port
-	log.Printf("SSE Server starting on %s...\n", address)
+	log.Printf("Server starting on %s...\n", address)
 
 	if err := http.ListenAndServe(address, nil); err != nil {
 		log.Fatal(err)
