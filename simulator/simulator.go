@@ -51,7 +51,7 @@ type MeterState struct {
 
 type SimulationState struct {
 	Time      string             `json:"time"`
-	Meters    []MeterState       `json:"meters"`
+	Meters    []*MeterState      `json:"meters"`
 	GridState map[string]float64 `json:"grid"`
 }
 
@@ -90,7 +90,7 @@ type SimulationAnalytics struct {
 	TotalStates             int64   `json:"Total States"`
 }
 
-func allHaveSurplus(meters []MeterState) bool {
+func allHaveSurplus(meters []*MeterState) bool {
 	allSurplus := true
 
 	for _, m := range meters {
@@ -102,7 +102,7 @@ func allHaveSurplus(meters []MeterState) bool {
 	return allSurplus
 }
 
-func missedPotentialTrade(meters []MeterState) bool {
+func missedPotentialTrade(meters []*MeterState) bool {
 	cond := false
 
 	for _, m := range meters {
@@ -114,7 +114,7 @@ func missedPotentialTrade(meters []MeterState) bool {
 	return cond
 }
 
-func countAvailableSurplusMeters(meters []MeterState) int64 {
+func countAvailableSurplusMeters(meters []*MeterState) int64 {
 	sellerCount := 0
 	surplusCount := 0
 	for _, m := range meters {
@@ -140,7 +140,7 @@ func NewSimulationAnalytics() *SimulationAnalytics {
 	}
 }
 
-func (sa *SimulationAnalytics) Aggregate(meters []MeterState) *SimulationAnalytics {
+func (sa *SimulationAnalytics) Aggregate(meters []*MeterState) *SimulationAnalytics {
 	sa.TotalStates += 1
 	available := countAvailableSurplusMeters(meters)
 	if available > 0 && missedPotentialTrade(meters) {
@@ -190,15 +190,15 @@ func roundTo(n float64, decimals uint32) float64 {
 	return res
 }
 
-func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfers map[string]float64) []MeterState {
-	var results []MeterState
+func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfers map[string]float64) []*MeterState {
+	var results []*MeterState
 	for id, m := range meters {
 		inTrade := ""
 		if sellerID, ok := trades[id]; ok && sellerID != nil {
 			inTrade = *sellerID
 		}
 
-		results = append(results, MeterState{
+		results = append(results, &MeterState{
 			ID:                 id,
 			Surplus:            roundTo(m.Surplus, 2),
 			Purchased:          roundTo(transfers[id], 2),
@@ -209,7 +209,7 @@ func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfe
 	return results
 }
 
-func NewSimulationState(t) *SimulationState {
+func NewSimulationState(t Time, meterStates []*MeterState) *SimulationState {
 	return &SimulationState{
 		Time:      t.Format("15:04:05"),
 		Meters:    meterStates,
