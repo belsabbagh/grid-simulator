@@ -233,7 +233,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 			requests := make(map[string][]*Request)
 
-			for id, m := range meters {
+			for _, m := range meters {
 				if m.Surplus > 0 {
 					continue
 				}
