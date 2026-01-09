@@ -8,13 +8,11 @@ import (
 
 type Trader struct {
 	tradeChooser BestOffersFunc
-	Trades       map[string]string
 }
 
 func NewTrader(tradeChooser BestOffersFunc) *Trader {
 	return &Trader{
 		tradeChooser: tradeChooser,
-		Trades:       make(map[string]string),
 	}
 }
 func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState []float64, limit int) []ScoredOffer {

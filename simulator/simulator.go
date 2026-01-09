@@ -202,10 +202,11 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 	out := make(chan *SimulationState)
 	tradeChooser := MkChooseBestOffersFunction("models/grid-loss-weights.csv", "models/duration-weights.csv", "models/grid-loss.json", make([]float64, 0))
 	trader := NewTrader(tradeChooser)
+	gridStateGenerator := MkGridStateGenerator()
+
 	go func() {
 		defer close(out)
 		dataGenerator := MkInstanceGenerator(startDate, endDate, increment, 0.5)
-		gridStateGenerator := MkGridStateGenerator()
 		meters := make(map[string]*Meter)
 		for i := range n {
 			id := fmt.Sprintf("%d", i+1)
