@@ -80,7 +80,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 	for state := range sim {
 		analytics.Aggregate(state.Meters)
-		compressed := simulator.NewCompressedSimulationState(state)
+		compressed := simulator.NewCompressedSimulationState(&state)
 
 		payload := Response{
 			Status:    "running",
