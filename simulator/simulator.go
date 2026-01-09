@@ -6,8 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"math"
-	"sort"
 	"strconv"
 	"time"
 )
@@ -194,7 +192,7 @@ func mapMeterStates(meters map[string]*Meter, trades map[string]string, transfer
 	var results []*MeterState
 	for id, m := range meters {
 		inTrade := ""
-		if sellerID, ok := trades[id]; ok && sellerID != nil {
+		if sellerID, ok := trades[id]; ok && sellerID != "" {
 			inTrade = sellerID
 		}
 
