@@ -209,7 +209,7 @@ func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfe
 	return results
 }
 
-func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-chan SimulationState {
+func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-chan *SimulationState {
 	out := make(chan *SimulationState)
 
 	go func() {
