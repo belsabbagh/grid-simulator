@@ -38,24 +38,35 @@ func compressor(data any) string {
 	return encodedData
 }
 
+func LogMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		startTime := time.Now()
+
+		next.ServeHTTP(writer, req)
+
+		elapsedTime := time.Since(startTime)
+		log.Printf("[%s] [%s] [%s]\n", req.Method, req.URL.Path, elapsedTime)
+	})
+}
+
+func CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func runHandler(w http.ResponseWriter, r *http.Request) {
 	timeoutStr := os.Getenv("SIMULATION_STEP_DELAY_MS")
 	delay, err := time.ParseDuration(timeoutStr)
 	if err != nil {
 		delay = 100 * time.Millisecond
 	}
-	if r.Method != http.MethodPost && r.Method != http.MethodOptions {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	var req RunRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("%s", err), http.StatusBadRequest)
@@ -131,13 +142,14 @@ func main() {
 		port = "5515"
 		log.Printf("PORT not set in .env, defaulting to %s", port)
 	}
-
-	http.HandleFunc("/run", runHandler)
-	http.HandleFunc("/health", healthCheckHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/run", runHandler)
+	mux.HandleFunc("/health", healthCheckHandler)
+	wrappedMux := LogMiddleware(CORSMiddleware(mux))
 	address := ":" + port
 	log.Printf("Server starting on %s...\n", address)
 
-	if err := http.ListenAndServe(address, nil); err != nil {
+	if err := http.ListenAndServe(address, wrappedMux); err != nil {
 		log.Fatal(err)
 	}
 }
