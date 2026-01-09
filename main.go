@@ -1,9 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
 	"encoding/json"
 	"energy-trading-simulator/simulator"
 	"fmt"
@@ -24,18 +21,6 @@ type Response struct {
 	Status    string                              `json:"status"`
 	State     simulator.CompressedSimulationState `json:"state"`
 	Analytics simulator.SimulationAnalytics       `json:"analytics"`
-}
-
-func compressor(data any) string {
-	jsonData, _ := json.Marshal(data)
-
-	var buf bytes.Buffer
-	zw := gzip.NewWriter(&buf)
-	zw.Write(jsonData)
-	zw.Close()
-
-	encodedData := base64.StdEncoding.EncodeToString(buf.Bytes())
-	return encodedData
 }
 
 func LogMiddleware(next http.Handler) http.Handler {
@@ -95,11 +80,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 	for state := range sim {
 		analytics.Aggregate(state.Meters)
-		compressed := &simulator.CompressedSimulationState{
-			Time:      state.Time,
-			Meters:    compressor(state.Meters),
-			GridState: state.GridState,
-		}
+		compressed := simulator.NewCompressedSimulationState(state)
 
 		payload := Response{
 			Status:    "running",

@@ -1,6 +1,9 @@
 package simulator
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"fmt"
 	"math"
 	"sort"
@@ -55,6 +58,27 @@ type CompressedSimulationState struct {
 	Time      string             `json:"time"`
 	Meters    string             `json:"meters"`
 	GridState map[string]float64 `json:"grid"`
+}
+
+func compressor(data any) string {
+	jsonData, _ := json.Marshal(data)
+
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	zw.Write(jsonData)
+	zw.Close()
+
+	encodedData := base64.StdEncoding.EncodeToString(buf.Bytes())
+	return encodedData
+}
+
+func NewCompressedSimulationState(s *SimulationState) *CompressedSimulationState {
+	return &CompressedSimulationState{
+		Time:      s.Time,
+		Meters:    compressor(s.Meters),
+		GridState: s.GridState,
+	}
+
 }
 
 type SimulationAnalytics struct {
