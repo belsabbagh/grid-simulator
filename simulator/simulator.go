@@ -209,7 +209,7 @@ func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfe
 	return results
 }
 
-func NewSimulationState(t Time, meterStates []*MeterState) *SimulationState {
+func NewSimulationState(t time.Time, meterStates []*MeterState, gridState []float64) *SimulationState {
 	return &SimulationState{
 		Time:      t.Format("15:04:05"),
 		Meters:    meterStates,
@@ -245,11 +245,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 			if len(offers) == 0 {
 				meterStates := mapMeterStates(meters, nil, nil)
-				out <- &SimulationState{
-					Time:      t.Format("15:04:05"),
-					Meters:    meterStates,
-					GridState: FmtGridState(gridState),
-				}
+				out <- NewSimulationState(t, meterStates, gridState)
 				continue
 			}
 
@@ -271,11 +267,8 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 			transfers := trader.ExecuteTrades(requests, meters, gridState)
 			meterStates := mapMeterStates(meters, trader.Trades, transfers)
 
-			out <- &SimulationState{
-				Time:      t.Format("15:04:05"),
-				GridState: FmtGridState(gridState),
-				Meters:    meterStates,
-			}
+			out <- NewSimulationState(t, meterStates, gridState)
+
 		}
 	}()
 
