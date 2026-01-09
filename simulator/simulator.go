@@ -262,7 +262,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 					})
 				}
 			}
-			transfers := trader.ExecuteTrades(requests, meters, gridState)
+			transfers := trader.ExecuteTrades(requests, meters, gridState, increment)
 			meterStates := mapMeterStates(meters, trader.Trades, transfers)
 
 			out <- NewSimulationState(t, meterStates, gridState)

@@ -3,6 +3,7 @@ package simulator
 import (
 	"math"
 	"sort"
+	"time"
 )
 
 type Trader struct {
