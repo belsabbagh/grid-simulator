@@ -209,12 +209,20 @@ func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfe
 	return results
 }
 
+func NewSimulationState(t) *SimulationState {
+	return &SimulationState{
+		Time:      t.Format("15:04:05"),
+		Meters:    meterStates,
+		GridState: FmtGridState(gridState),
+	}
+}
+
 func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-chan *SimulationState {
 	out := make(chan *SimulationState)
-
+	tradeChooser := MkChooseBestOffersFunction("models/grid-loss-weights.csv", "models/duration-weights.csv", "models/grid-loss.json", make([]float64, 0))
+	trader := NewTrader(tradeChooser)
 	go func() {
 		defer close(out)
-		tradeChooser := MkChooseBestOffersFunction("models/grid-loss-weights.csv", "models/duration-weights.csv", "models/grid-loss.json", make([]float64, 0))
 		dataGenerator := MkInstanceGenerator(startDate, endDate, increment, 0.5)
 		gridStateGenerator := MkGridStateGenerator()
 		meters := make(map[string]*Meter)
@@ -245,44 +253,23 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				continue
 			}
 
-			trades := make(map[string]*string)
-			requests := make(map[string][]Request)
+			requests := make(map[string][]*Request)
 
 			for id, m := range meters {
 				if m.Surplus > 0 {
-					trades[id] = nil
+					trader.Trades[id] = nil
 					continue
 				}
-
-				choices := tradeChooser(m.Surplus, offers, gridState, len(offers)-1)
-				for _, c := range choices {
-					sid := c.Offer.ID
+				scoredOffers := trader.ScoreOffers(m, offers, gridState, len(offers)-1)
+				for _, o := range scoredOffers {
+					sid := o.Offer.ID
 					requests[sid] = append(requests[sid], Request{
-						Meter: *m, Score: c.Score,
+						Meter: *m, Score: o.Score,
 					})
 				}
 			}
-
-			transfers := make(map[string]float64)
-			for sellerID, buyers := range requests {
-				sort.Slice(buyers, func(i, j int) bool {
-					return buyers[i].Score > buyers[j].Score
-				})
-
-				buyerID := buyers[0].Meter.ID
-				meters[sellerID].ParticipationCount++
-				trades[buyerID] = &sellerID
-				gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * increment.Seconds()
-				transferAmount := math.Min(
-					math.Min(meters[sellerID].Surplus, gridLimit),
-					math.Abs(meters[buyerID].Surplus),
-				)
-
-				transfers[buyerID] = transferAmount
-				transfers[sellerID] = -transferAmount
-			}
-
-			meterStates := mapMeterStates(meters, trades, transfers)
+			transfers := trader.ExecuteTrades(requests, meters, gridState)
+			meterStates := mapMeterStates(meters, trader.Trades, transfers)
 
 			out <- &SimulationState{
 				Time:      t.Format("15:04:05"),
