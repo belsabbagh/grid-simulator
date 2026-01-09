@@ -237,7 +237,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 			if len(offers) == 0 {
 				meterStates := mapMeterStates(meters, nil, nil)
-				out <- SimulationState{
+				out <- &SimulationState{
 					Time:      t.Format("15:04:05"),
 					Meters:    meterStates,
 					GridState: FmtGridState(gridState),
