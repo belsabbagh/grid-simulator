@@ -210,7 +210,7 @@ func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfe
 }
 
 func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-chan SimulationState {
-	out := make(chan SimulationState)
+	out := make(chan *SimulationState)
 
 	go func() {
 		defer close(out)
@@ -284,7 +284,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 			meterStates := mapMeterStates(meters, trades, transfers)
 
-			out <- SimulationState{
+			out <- &SimulationState{
 				Time:      t.Format("15:04:05"),
 				GridState: FmtGridState(gridState),
 				Meters:    meterStates,
