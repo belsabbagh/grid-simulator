@@ -39,17 +39,9 @@ type Request struct {
 	Score float64
 }
 
-type MeterState struct {
-	ID                 string  `json:"id"`
-	Surplus            float64 `json:"s"`
-	Purchased          float64 `json:"p"`
-	From               string  `json:"f"`
-	ParticipationCount int64   `json:"c"`
-}
-
 type SimulationState struct {
 	Time      string             `json:"time"`
-	Meters    []*MeterState      `json:"meters"`
+	Meters    []*Meter           `json:"meters"`
 	GridState map[string]float64 `json:"grid"`
 }
 
@@ -88,7 +80,7 @@ type SimulationAnalytics struct {
 	TotalStates             int64   `json:"Total States"`
 }
 
-func allHaveSurplus(meters []*MeterState) bool {
+func allHaveSurplus(meters []*Meter) bool {
 	allSurplus := true
 
 	for _, m := range meters {
@@ -100,7 +92,7 @@ func allHaveSurplus(meters []*MeterState) bool {
 	return allSurplus
 }
 
-func missedPotentialTrade(meters []*MeterState) bool {
+func missedPotentialTrade(meters []*Meter) bool {
 	cond := false
 
 	for _, m := range meters {
@@ -112,7 +104,7 @@ func missedPotentialTrade(meters []*MeterState) bool {
 	return cond
 }
 
-func countAvailableSurplusMeters(meters []*MeterState) int64 {
+func countAvailableSurplusMeters(meters []*Meter) int64 {
 	sellerCount := 0
 	surplusCount := 0
 	for _, m := range meters {
@@ -138,7 +130,7 @@ func NewSimulationAnalytics() *SimulationAnalytics {
 	}
 }
 
-func (sa *SimulationAnalytics) Aggregate(meters []*MeterState) *SimulationAnalytics {
+func (sa *SimulationAnalytics) Aggregate(meters []*Meter) *SimulationAnalytics {
 	sa.TotalStates += 1
 	available := countAvailableSurplusMeters(meters)
 	if available > 0 && missedPotentialTrade(meters) {
@@ -188,15 +180,15 @@ func roundTo(n float64, decimals uint32) float64 {
 	return res
 }
 
-func mapMeterStates(meters map[string]*Meter, trades map[string]string, transfers map[string]float64) []*MeterState {
-	var results []*MeterState
+func fmtMeters(meters map[string]*Meter, trades map[string]string, transfers map[string]float64) []*Meter {
+	var results []*Meter
 	for id, m := range meters {
 		inTrade := ""
 		if sellerID, ok := trades[id]; ok && sellerID != "" {
 			inTrade = sellerID
 		}
 
-		results = append(results, &MeterState{
+		results = append(results, &Meter{
 			ID:                 id,
 			Surplus:            roundTo(m.Surplus, 2),
 			Purchased:          roundTo(transfers[id], 2),
@@ -207,10 +199,10 @@ func mapMeterStates(meters map[string]*Meter, trades map[string]string, transfer
 	return results
 }
 
-func NewSimulationState(t time.Time, meterStates []*MeterState, gridState []float64) *SimulationState {
+func NewSimulationState(t time.Time, formattedMeters []*Meter, gridState []float64) *SimulationState {
 	return &SimulationState{
 		Time:      t.Format("15:04:05"),
-		Meters:    meterStates,
+		Meters:    formattedMeters,
 		GridState: FmtGridState(gridState),
 	}
 }
@@ -242,8 +234,8 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 			}
 
 			if len(offers) == 0 {
-				meterStates := mapMeterStates(meters, nil, nil)
-				out <- NewSimulationState(t, meterStates, gridState)
+				formattedMeters := fmtMeters(meters, nil, nil)
+				out <- NewSimulationState(t, formattedMeters, gridState)
 				continue
 			}
 
@@ -263,9 +255,9 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				}
 			}
 			transfers := trader.ExecuteTrades(requests, meters, gridState, increment)
-			meterStates := mapMeterStates(meters, trader.Trades, transfers)
+			formattedMeters := fmtMeters(meters, trader.Trades, transfers)
 
-			out <- NewSimulationState(t, meterStates, gridState)
+			out <- NewSimulationState(t, formattedMeters, gridState)
 
 		}
 	}()
