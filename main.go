@@ -42,10 +42,10 @@ func LogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
 
-		next.ServeHTTP(writer, req)
+		next.ServeHTTP(w, r)
 
 		elapsedTime := time.Since(startTime)
-		log.Printf("[%s] [%s] [%s]\n", req.Method, req.URL.Path, elapsedTime)
+		log.Printf("[%s] [%s] [%s]\n", r.Method, r.URL.Path, elapsedTime)
 	})
 }
 
