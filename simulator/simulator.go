@@ -180,21 +180,12 @@ func roundTo(n float64, decimals uint32) float64 {
 	return res
 }
 
-func fmtMeters(meters map[string]*Meter, trades map[string]string, transfers map[string]float64) []*Meter {
+func fmtMeters(meters map[string]*Meter) []*Meter {
 	var results []*Meter
 	for id, m := range meters {
-		inTrade := ""
-		if sellerID, ok := trades[id]; ok && sellerID != "" {
-			inTrade = sellerID
-		}
-
-		results = append(results, &Meter{
-			ID:                 id,
-			Surplus:            roundTo(m.Surplus, 2),
-			Purchased:          roundTo(transfers[id], 2),
-			From:               inTrade,
-			ParticipationCount: m.ParticipationCount,
-		})
+		m.Surplus = roundTo(m.Surplus, 2)
+		m.Purchased = roundTo(m.Purchased, 2)
+		results = append(results, m)
 	}
 	return results
 }
@@ -230,11 +221,12 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				m.ReadEnv(gen, con)
 				if m.Surplus > 0 {
 					offers = append(offers, m)
+					m.From = ""
 				}
 			}
 
 			if len(offers) == 0 {
-				formattedMeters := fmtMeters(meters, nil, nil)
+				formattedMeters := fmtMeters(meters)
 				out <- NewSimulationState(t, formattedMeters, gridState)
 				continue
 			}
@@ -243,7 +235,6 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 			for id, m := range meters {
 				if m.Surplus > 0 {
-					trader.Trades[id] = ""
 					continue
 				}
 				scoredOffers := trader.ScoreOffers(m, offers, gridState, len(offers)-1)
@@ -255,7 +246,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				}
 			}
 			transfers := trader.ExecuteTrades(requests, meters, gridState, increment)
-			formattedMeters := fmtMeters(meters, trader.Trades, transfers)
+			formattedMeters := fmtMeters(meters)
 
 			out <- NewSimulationState(t, formattedMeters, gridState)
 

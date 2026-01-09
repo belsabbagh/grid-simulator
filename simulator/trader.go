@@ -28,18 +28,18 @@ func (t *Trader) ExecuteTrades(requests map[string][]*Request, meters map[string
 		sort.Slice(buyers, func(i, j int) bool {
 			return buyers[i].Score > buyers[j].Score
 		})
-
-		buyerID := buyers[0].Meter.ID
-		meters[sellerID].ParticipationCount++
-		t.Trades[buyerID] = sellerID
+		seller := meters[sellerID]
+		buyer := meters[buyers[0].Meter.ID]
+		seller.ParticipationCount++
+		buyer.From = sellerID
 		gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * inc.Seconds()
 		transferAmount := math.Min(
-			math.Min(meters[sellerID].Surplus, gridLimit),
-			math.Abs(meters[buyerID].Surplus),
+			math.Min(seller.Surplus, gridLimit),
+			math.Abs(buyer.Surplus),
 		)
 
-		transfers[buyerID] = transferAmount
-		transfers[sellerID] = -transferAmount
+		buyer.Purchased = transferAmount
+		seller.Purchased = -transferAmount
 	}
 	return transfers
 }
