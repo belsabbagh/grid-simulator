@@ -182,7 +182,7 @@ func roundTo(n float64, decimals uint32) float64 {
 
 func fmtMeters(meters map[string]*Meter) []*Meter {
 	var results []*Meter
-	for id, m := range meters {
+	for _, m := range meters {
 		m.Surplus = roundTo(m.Surplus, 2)
 		m.Purchased = roundTo(m.Purchased, 2)
 		results = append(results, m)
