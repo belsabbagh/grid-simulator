@@ -17,7 +17,7 @@ func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState []float64, lim
 	return choices
 }
 
-func (t.Trader) ExecuteTrades(requests map[string]*Request, meters []*Meter, gridState []float64) map[string]float64 {
+func (t *Trader) ExecuteTrades(requests map[string]*Request, meters []*Meter, gridState []float64) map[string]float64 {
 	transfers := make(map[string]float64)
 	for sellerID, buyers := range requests {
 		sort.Slice(buyers, func(i, j int) bool {

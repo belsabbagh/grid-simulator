@@ -257,13 +257,13 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 			for id, m := range meters {
 				if m.Surplus > 0 {
-					trader.Trades[id] = nil
+					trader.Trades[id] = ""
 					continue
 				}
 				scoredOffers := trader.ScoreOffers(m, offers, gridState, len(offers)-1)
 				for _, o := range scoredOffers {
 					sid := o.Offer.ID
-					requests[sid] = append(requests[sid], Request{
+					requests[sid] = append(requests[sid], &Request{
 						Meter: *m, Score: o.Score,
 					})
 				}
