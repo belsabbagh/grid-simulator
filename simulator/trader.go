@@ -1,5 +1,10 @@
 package simulator
 
+import (
+	"math"
+	"sort"
+)
+
 type Trader struct {
 	tradeChooser BestOffersFunc
 	Trades       map[string]string
@@ -8,16 +13,15 @@ type Trader struct {
 func NewTrader(tradeChooser BestOffersFunc) *Trader {
 	return &Trader{
 		tradeChooser: tradeChooser,
-		trades:       make(map[string]string),
+		Trades:       make(map[string]string),
 	}
 }
-func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState []float64, limit int) []ScoredOffers {
-	requests := make([]*Request)
+func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState []float64, limit int) []ScoredOffer {
 	choices := t.tradeChooser(m.Surplus, offers, gridState, limit)
 	return choices
 }
 
-func (t *Trader) ExecuteTrades(requests map[string][]*Request, meters []*Meter, gridState []float64) map[string]float64 {
+func (t *Trader) ExecuteTrades(requests map[string][]*Request, meters map[string]*Meter, gridState []float64) map[string]float64 {
 	transfers := make(map[string]float64)
 	for sellerID, buyers := range requests {
 		sort.Slice(buyers, func(i, j int) bool {

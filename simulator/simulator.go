@@ -190,12 +190,12 @@ func roundTo(n float64, decimals uint32) float64 {
 	return res
 }
 
-func mapMeterStates(meters map[string]*Meter, trades map[string]*string, transfers map[string]float64) []*MeterState {
+func mapMeterStates(meters map[string]*Meter, trades map[string]string, transfers map[string]float64) []*MeterState {
 	var results []*MeterState
 	for id, m := range meters {
 		inTrade := ""
 		if sellerID, ok := trades[id]; ok && sellerID != nil {
-			inTrade = *sellerID
+			inTrade = sellerID
 		}
 
 		results = append(results, &MeterState{
