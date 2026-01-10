@@ -20,7 +20,7 @@ func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState []float64, lim
 	return choices
 }
 
-func (t *Trader) ExecuteTrades(requests map[string][]*Request, meters map[string]*Meter, gridState []float64, duration time.Duration) error {
+func (t *Trader) ExecuteTrades(requests map[string][]*TradeRequest, meters map[string]*Meter, gridState []float64, duration time.Duration) error {
 	for sellerID, buyers := range requests {
 		sort.Slice(buyers, func(i, j int) bool {
 			return buyers[i].Score > buyers[j].Score
