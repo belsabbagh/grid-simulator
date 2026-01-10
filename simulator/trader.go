@@ -20,6 +20,24 @@ func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState []float64, lim
 	return choices
 }
 
+func (t *Trader) CollectRequests(meters map[string]*Meter, offers []*Meter, gridState []float64) map[string][]*TradeRequest {
+	requests := make(map[string][]*TradeRequest)
+
+	for _, m := range meters {
+		if m.Surplus > 0 {
+			continue
+		}
+		scoredOffers := t.ScoreOffers(m, offers, gridState, len(offers)-1)
+		for _, o := range scoredOffers {
+			sid := o.Offer.ID
+			requests[sid] = append(requests[sid], &TradeRequest{
+				Meter: *m, Score: o.Score,
+			})
+		}
+	}
+	return requests
+}
+
 func (t *Trader) ExecuteTrades(requests map[string][]*TradeRequest, meters map[string]*Meter, gridState []float64, duration time.Duration) error {
 	for sellerID, buyers := range requests {
 		sort.Slice(buyers, func(i, j int) bool {

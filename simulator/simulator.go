@@ -149,20 +149,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				continue
 			}
 
-			requests := make(map[string][]*TradeRequest)
-
-			for _, m := range meters {
-				if m.Surplus > 0 {
-					continue
-				}
-				scoredOffers := trader.ScoreOffers(m, offers, gridState, len(offers)-1)
-				for _, o := range scoredOffers {
-					sid := o.Offer.ID
-					requests[sid] = append(requests[sid], &TradeRequest{
-						Meter: *m, Score: o.Score,
-					})
-				}
-			}
+			requests := trader.CollectRequests(meters, offers, gridState)
 			_ = trader.ExecuteTrades(requests, meters, gridState, increment)
 			formattedMeters := fmtMeters(meters)
 
