@@ -20,8 +20,7 @@ func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState []float64, lim
 	return choices
 }
 
-func (t *Trader) ExecuteTrades(requests map[string][]*Request, meters map[string]*Meter, gridState []float64, inc time.Duration) map[string]float64 {
-	transfers := make(map[string]float64)
+func (t *Trader) ExecuteTrades(requests map[string][]*Request, meters map[string]*Meter, gridState []float64, duration time.Duration) error {
 	for sellerID, buyers := range requests {
 		sort.Slice(buyers, func(i, j int) bool {
 			return buyers[i].Score > buyers[j].Score
@@ -30,7 +29,7 @@ func (t *Trader) ExecuteTrades(requests map[string][]*Request, meters map[string
 		buyer := meters[buyers[0].Meter.ID]
 		seller.ParticipationCount++
 		buyer.From = sellerID
-		gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * inc.Seconds()
+		gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * duration.Seconds()
 		transferAmount := math.Min(
 			math.Min(seller.Surplus, gridLimit),
 			math.Abs(buyer.Surplus),
@@ -39,5 +38,5 @@ func (t *Trader) ExecuteTrades(requests map[string][]*Request, meters map[string
 		buyer.Purchased = transferAmount
 		seller.Purchased = -transferAmount
 	}
-	return transfers
+	return nil
 }

@@ -34,7 +34,7 @@ func (m *Meter) ReadEnv(gen float64, con float64) float64 {
 	return m.Surplus
 }
 
-type Request struct {
+type TradeRequest struct {
 	Meter Meter
 	Score float64
 }
@@ -107,10 +107,10 @@ func fmtMeters(meters map[string]*Meter) []*Meter {
 	return results
 }
 
-func NewSimulationState(t time.Time, formattedMeters []*Meter, gridState []float64) *SimulationState {
+func NewSimulationState(t time.Time, meters []*Meter, gridState []float64) *SimulationState {
 	return &SimulationState{
 		Time:      t.Format("15:04:05"),
-		Meters:    formattedMeters,
+		Meters:    meters,
 		GridState: FmtGridState(gridState),
 	}
 }
@@ -149,7 +149,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				continue
 			}
 
-			requests := make(map[string][]*Request)
+			requests := make(map[string][]*TradeRequest)
 
 			for _, m := range meters {
 				if m.Surplus > 0 {
@@ -158,7 +158,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				scoredOffers := trader.ScoreOffers(m, offers, gridState, len(offers)-1)
 				for _, o := range scoredOffers {
 					sid := o.Offer.ID
-					requests[sid] = append(requests[sid], &Request{
+					requests[sid] = append(requests[sid], &TradeRequest{
 						Meter: *m, Score: o.Score,
 					})
 				}
