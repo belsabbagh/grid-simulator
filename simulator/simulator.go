@@ -143,16 +143,11 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				}
 			}
 
-			if len(offers) == 0 {
-				formattedMeters := fmtMeters(meters)
-				out <- NewSimulationState(t, formattedMeters, gridState)
-				continue
+			if len(offers) > 0 {
+				requests := trader.CollectRequests(meters, offers, gridState)
+				_ = trader.ExecuteTrades(requests, meters, gridState, increment)
 			}
-
-			requests := trader.CollectRequests(meters, offers, gridState)
-			_ = trader.ExecuteTrades(requests, meters, gridState, increment)
 			formattedMeters := fmtMeters(meters)
-
 			out <- NewSimulationState(t, formattedMeters, gridState)
 
 		}
