@@ -1,6 +1,9 @@
 package simulator
 
 type SimulationAnalytics struct {
+	Surplus                 int64   `json:"Surplus Meters"`
+	Sufficient              int64   `json:"Sufficient Meters"`
+	Deficient               int64   `json:"Deficient Meters"`
 	EnergyWastedBefore      float64 `json:"Energy Wasted Before"`
 	EnergyWastedAfter       float64 `json:"Energy Wasted After"`
 	SavedEnergy             float64 `json:"Saved Energy"`
@@ -50,6 +53,9 @@ func countAvailableSurplusMeters(meters []*Meter) int64 {
 
 func NewSimulationAnalytics() *SimulationAnalytics {
 	return &SimulationAnalytics{
+		Surplus:                 0,
+		Sufficient:              0,
+		Deficient:               0,
 		EnergyWastedBefore:      0,
 		EnergyWastedAfter:       0,
 		SavedEnergy:             0,
@@ -66,7 +72,14 @@ func (sa *SimulationAnalytics) Aggregate(meters []*Meter) *SimulationAnalytics {
 	}
 	for _, m := range meters {
 		if m.Surplus > 0 {
+			sa.Surplus++
 			sa.EnergyWastedBefore += m.Surplus
+		}
+		if m.Surplus == 0 {
+			sa.Sufficient++
+		}
+		if m.Surplus < 0 {
+			sa.Deficient++
 		}
 		remaining := m.Surplus + m.Purchased
 
