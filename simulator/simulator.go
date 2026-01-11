@@ -34,11 +34,6 @@ func (m *Meter) ReadEnv(gen float64, con float64) float64 {
 	return m.Surplus
 }
 
-type TradeRequest struct {
-	Meter Meter
-	Score float64
-}
-
 type SimulationState struct {
 	Time      string             `json:"time"`
 	Meters    []*Meter           `json:"meters"`

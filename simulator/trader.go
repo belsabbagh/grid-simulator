@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+type TradeRequest struct {
+	Meter *Meter
+	Score float64
+}
+
 type Trader struct {
 	tradeChooser BestOffersFunc
 }
@@ -41,7 +46,7 @@ func (t *Trader) CollectRequests(meters map[string]*Meter, gridState []float64) 
 		for _, o := range scoredOffers {
 			sid := o.Offer.ID
 			requests[sid] = append(requests[sid], &TradeRequest{
-				Meter: *m, Score: o.Score,
+				Meter: m, Score: o.Score,
 			})
 		}
 	}
@@ -56,7 +61,7 @@ func (t *Trader) ExecuteTrades(requests map[string][]*TradeRequest, meters map[s
 		seller := meters[sellerID]
 		buyer := buyers[0].Meter
 		seller.ParticipationCount++
-		buyer.From = fmt.Sprintf("Buying:%s", sellerID)
+		buyer.From = fmt.Sprintf("Buying:%s", seller.ID)
 		seller.From = fmt.Sprintf("Selling:%s", buyer.ID)
 		gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * duration.Seconds()
 		transferAmount := math.Min(

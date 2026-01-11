@@ -58,9 +58,10 @@ func (m *Model) LoadFromCSV(path string) error {
 			continue
 		}
 
-		if record[1] == "weight" {
+		switch record[1] {
+		case "weight":
 			weightValues = append(weightValues, val)
-		} else if record[1] == "bias" {
+		case "bias":
 			bias = val
 		}
 	}
