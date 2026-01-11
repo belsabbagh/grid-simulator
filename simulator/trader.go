@@ -10,23 +10,32 @@ type Trader struct {
 	tradeChooser BestOffersFunc
 }
 
-func NewTrader(tradeChooser BestOffersFunc) *Trader {
+func NewTrader() *Trader {
+	tradeChooser := MkChooseBestOffersFunction("models/grid-loss-weights.csv", "models/duration-weights.csv", "models/grid-loss.json", make([]float64, 0))
 	return &Trader{
 		tradeChooser: tradeChooser,
 	}
 }
+
 func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState []float64, limit int) []ScoredOffer {
 	choices := t.tradeChooser(m.Surplus, offers, gridState, limit)
 	return choices
 }
 
-func (t *Trader) CollectRequests(meters map[string]*Meter, offers []*Meter, gridState []float64) map[string][]*TradeRequest {
+func (t *Trader) CollectRequests(meters map[string]*Meter, gridState []float64) map[string][]*TradeRequest {
 	requests := make(map[string][]*TradeRequest)
 
+	var offers []*Meter
 	for _, m := range meters {
 		if m.Surplus > 0 {
+			offers = append(offers, m)
 			continue
 		}
+	}
+	if len(offers) == 0 {
+		return requests
+	}
+	for _, m := range meters {
 		scoredOffers := t.ScoreOffers(m, offers, gridState, len(offers)-1)
 		for _, o := range scoredOffers {
 			sid := o.Offer.ID

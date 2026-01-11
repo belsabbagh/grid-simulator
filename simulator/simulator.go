@@ -117,8 +117,7 @@ func NewSimulationState(t time.Time, meters []*Meter, gridState []float64) *Simu
 
 func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-chan *SimulationState {
 	out := make(chan *SimulationState)
-	tradeChooser := MkChooseBestOffersFunction("models/grid-loss-weights.csv", "models/duration-weights.csv", "models/grid-loss.json", make([]float64, 0))
-	trader := NewTrader(tradeChooser)
+	trader := NewTrader()
 	gridStateGenerator := MkGridStateGenerator()
 
 	go func() {
@@ -132,21 +131,17 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 
 		for t := startDate; t.Before(endDate); t = t.Add(increment) {
 			gridState := gridStateGenerator(t)
-			var offers []*Meter
 
 			for _, m := range meters {
 				gen, con := dataGenerator(t)
 				m.ReadEnv(gen, con)
 				if m.Surplus > 0 {
-					offers = append(offers, m)
 					m.From = ""
 				}
 			}
 
-			if len(offers) > 0 {
-				requests := trader.CollectRequests(meters, offers, gridState)
-				_ = trader.ExecuteTrades(requests, meters, gridState, increment)
-			}
+			requests := trader.CollectRequests(meters, gridState)
+			_ = trader.ExecuteTrades(requests, meters, gridState, increment)
 			formattedMeters := fmtMeters(meters)
 			out <- NewSimulationState(t, formattedMeters, gridState)
 
