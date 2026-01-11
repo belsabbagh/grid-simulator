@@ -1,6 +1,7 @@
 package simulator
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -53,9 +54,10 @@ func (t *Trader) ExecuteTrades(requests map[string][]*TradeRequest, meters map[s
 			return buyers[i].Score > buyers[j].Score
 		})
 		seller := meters[sellerID]
-		buyer := meters[buyers[0].Meter.ID]
+		buyer := buyers[0].Meter
 		seller.ParticipationCount++
-		buyer.From = sellerID
+		buyer.From = fmt.Sprintf("Buying:%s", sellerID)
+		seller.From = fmt.Sprintf("Selling:%s", buyer.ID)
 		gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * duration.Seconds()
 		transferAmount := math.Min(
 			math.Min(seller.Surplus, gridLimit),
