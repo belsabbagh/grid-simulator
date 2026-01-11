@@ -17,10 +17,15 @@ type RunRequest struct {
 	StartDate string `json:"startDate"`
 }
 
+type CompressedResponse struct {
+	Status    string                               `json:"status"`
+	State     *simulator.CompressedSimulationState `json:"state"`
+	Analytics *simulator.SimulationAnalytics       `json:"analytics"`
+}
 type Response struct {
-	Status    string                              `json:"status"`
-	State     simulator.CompressedSimulationState `json:"state"`
-	Analytics simulator.SimulationAnalytics       `json:"analytics"`
+	Status    string                         `json:"status"`
+	State     *simulator.SimulationState     `json:"state"`
+	Analytics *simulator.SimulationAnalytics `json:"analytics"`
 }
 
 func LogMiddleware(next http.Handler) http.Handler {
@@ -80,12 +85,17 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 	for state := range sim {
 		analytics.Aggregate(state.Meters)
-		compressed := simulator.NewCompressedSimulationState(state)
+		// compressed := simulator.NewCompressedSimulationState(state)
 
+		// payload := CompressedResponse{
+		// 	Status:    "running",
+		// 	State:     compressed,
+		// 	Analytics: analytics,
+		// }
 		payload := Response{
 			Status:    "running",
-			State:     *compressed,
-			Analytics: *analytics,
+			State:     state,
+			Analytics: analytics,
 		}
 
 		jsonData, err := json.Marshal(payload)

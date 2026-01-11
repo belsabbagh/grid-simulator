@@ -70,6 +70,9 @@ func (sa *SimulationAnalytics) Aggregate(meters []*Meter) *SimulationAnalytics {
 	if available > 0 && missedPotentialTrade(meters) {
 		sa.StatesMissedOutOnTrades += 1
 	}
+	sa.Surplus = 0
+	sa.Sufficient = 0
+	sa.Deficient = 0
 	for _, m := range meters {
 		if m.Surplus > 0 {
 			sa.Surplus++
