@@ -28,8 +28,8 @@ func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState []float64, lim
 	return choices
 }
 
-func (t *Trader) CollectRequests(meters map[string]*Meter, gridState []float64) map[string][]*TradeRequest {
-	requests := make(map[string][]*TradeRequest)
+func (t *Trader) CollectRequests(meters map[string]*Meter, gridState []float64) map[*Meter][]*TradeRequest {
+	requests := make(map[*Meter][]*TradeRequest)
 
 	var offers []*Meter
 	for _, m := range meters {
@@ -44,8 +44,8 @@ func (t *Trader) CollectRequests(meters map[string]*Meter, gridState []float64) 
 	for _, m := range meters {
 		scoredOffers := t.ScoreOffers(m, offers, gridState, len(offers)-1)
 		for _, o := range scoredOffers {
-			sid := o.Offer.ID
-			requests[sid] = append(requests[sid], &TradeRequest{
+			seller := o.Offer
+			requests[seller] = append(requests[seller], &TradeRequest{
 				Meter: m, Score: o.Score,
 			})
 		}
@@ -53,16 +53,15 @@ func (t *Trader) CollectRequests(meters map[string]*Meter, gridState []float64) 
 	return requests
 }
 
-func (t *Trader) ExecuteTrades(requests map[string][]*TradeRequest, meters map[string]*Meter, gridState []float64, duration time.Duration) error {
-	for sellerID, buyers := range requests {
-		sort.Slice(buyers, func(i, j int) bool {
-			return buyers[i].Score > buyers[j].Score
+func (t *Trader) ExecuteTrades(requests map[*Meter][]*TradeRequest, meters map[string]*Meter, gridState []float64, duration time.Duration) error {
+	for seller, tradeRequests := range requests {
+		sort.Slice(tradeRequests, func(i, j int) bool {
+			return tradeRequests[i].Score > tradeRequests[j].Score
 		})
-		seller := meters[sellerID]
-		buyer := buyers[0].Meter
+		buyer := tradeRequests[0].Meter
 		seller.ParticipationCount++
-		buyer.From = fmt.Sprintf("Buying:%s", seller.ID)
-		seller.From = fmt.Sprintf("Selling:%s", buyer.ID)
+		buyer.Trade = fmt.Sprintf("Buying:%s", seller.ID)
+		seller.Trade = fmt.Sprintf("Selling:%s", buyer.ID)
 		gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * duration.Seconds()
 		transferAmount := math.Min(
 			math.Min(seller.Surplus, gridLimit),

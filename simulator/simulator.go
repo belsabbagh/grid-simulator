@@ -21,7 +21,7 @@ type Meter struct {
 	ID                 string  `json:"id"`
 	Surplus            float64 `json:"s"`
 	Purchased          float64 `json:"p"`
-	From               string  `json:"f"`
+	Trade              string  `json:"f"`
 	ParticipationCount int64   `json:"c"`
 }
 
@@ -131,7 +131,7 @@ func Simulate(n int64, startDate, endDate time.Time, increment time.Duration) <-
 				gen, con := dataGenerator(t)
 				m.ReadEnv(gen, con)
 				if m.Surplus > 0 {
-					m.From = ""
+					m.Trade = ""
 				}
 			}
 
