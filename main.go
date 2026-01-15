@@ -43,6 +43,7 @@ func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -85,18 +86,18 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 	for state := range sim {
 		analytics.Aggregate(state.Meters)
-		// compressed := simulator.NewCompressedSimulationState(state)
+		compressed := simulator.NewCompressedSimulationState(state)
 
-		// payload := CompressedResponse{
-		// 	Status:    "running",
-		// 	State:     compressed,
-		// 	Analytics: analytics,
-		// }
-		payload := Response{
+		payload := CompressedResponse{
 			Status:    "running",
-			State:     state,
+			State:     compressed,
 			Analytics: analytics,
 		}
+		// payload := Response{
+		// 	Status:    "running",
+		// 	State:     state,
+		// 	Analytics: analytics,
+		// }
 
 		jsonData, err := json.Marshal(payload)
 		if err != nil {
