@@ -7,7 +7,7 @@ COPY . .
 
 # CGO_ENABLED=0 is a common best practice for cross-system compatibility
 # and statically linked binaries.
-RUN CGO_ENABLED=0 go build -o /energy-trading-simulator ./main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -trimpath -o /energy-trading-simulator ./main.go
 
 FROM alpine:latest
 
