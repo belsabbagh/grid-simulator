@@ -35,15 +35,15 @@ func (m *Meter) ReadEnv(gen float64, con float64) float64 {
 }
 
 type SimulationState struct {
-	Time      string             `json:"time"`
-	Meters    []*Meter           `json:"meters"`
-	GridState map[string]float64 `json:"grid"`
+	Time      string     `json:"time"`
+	Meters    []*Meter   `json:"meters"`
+	GridState *GridState `json:"grid"`
 }
 
 type CompressedSimulationState struct {
-	Time      string             `json:"time"`
-	Meters    string             `json:"meters"`
-	GridState map[string]float64 `json:"grid"`
+	Time      string     `json:"time"`
+	Meters    string     `json:"meters"`
+	GridState *GridState `json:"grid"`
 }
 
 func compressor(data any) string {
@@ -74,18 +74,6 @@ var GridStateParams = []string{
 	"Global intensity (A)",
 }
 
-func FmtGridState(gridState []float64) map[string]float64 {
-	result := make(map[string]float64)
-
-	for i, param := range GridStateParams {
-		if i < len(gridState) {
-			result[param] = roundTo(gridState[i], 2)
-		}
-	}
-
-	return result
-}
-
 func roundTo(n float64, decimals uint32) float64 {
 	s := fmt.Sprintf("%.*f", decimals, n)
 	res, _ := strconv.ParseFloat(s, 64)
@@ -102,11 +90,11 @@ func fmtMeters(meters map[string]*Meter) []*Meter {
 	return results
 }
 
-func NewSimulationState(t time.Time, meters []*Meter, gridState []float64) *SimulationState {
+func NewSimulationState(t time.Time, meters []*Meter, gridState *GridState) *SimulationState {
 	return &SimulationState{
 		Time:      t.Format("15:04:05"),
 		Meters:    meters,
-		GridState: FmtGridState(gridState),
+		GridState: gridState,
 	}
 }
 

@@ -85,7 +85,7 @@ func (m *Model) Predict(x []float64) (float64, error) {
 	return res, nil
 }
 
-func MkPredictFunction(effModelPath, durModelPath string) func(float64, float64, float64, float64, float64) (float64, float64) {
+func MkPredictFunction(effModelPath, durModelPath string) func(*GridState, float64) (float64, float64) {
 	effModel := NewModel()
 	durModel := NewModel()
 	err := effModel.LoadFromCSV(effModelPath)
@@ -96,25 +96,25 @@ func MkPredictFunction(effModelPath, durModelPath string) func(float64, float64,
 	if err != nil {
 		fmt.Printf("Error loading %s: %s", durModelPath, err)
 	}
-	return func(gridLoad float64, gridTemp float64, voltage float64, intensity float64, amount float64) (float64, float64) {
-		effModelParams := []float64{gridLoad, gridTemp}
+	return func(gs *GridState, amount float64) (float64, float64) {
+		effModelParams := []float64{gs.Load, gs.Temp}
 		gridLoss, _ := effModel.Predict(effModelParams)
-		efficiency := (gridLoad - gridLoss) / gridLoad
-		durModelParams := []float64{voltage, intensity, efficiency, amount}
+		efficiency := (gs.Load - gridLoss) / gs.Load
+		durModelParams := []float64{gs.Voltage, gs.Intensity, efficiency, amount}
 		duration, _ := durModel.Predict(durModelParams)
 		return efficiency, duration
 	}
 }
 
-func MkFitnessFunction(effPath string, durPath string, weights []float64) func(float64, *Meter, []float64) float64 {
+func MkFitnessFunction(effPath string, durPath string, weights []float64) func(float64, *Meter, *GridState) float64 {
 	predict := MkPredictFunction(effPath, durPath)
 
 	if weights == nil {
 		weights = []float64{1, -1, 1, -1, 1, -1}
 	}
 
-	return func(amountNeeded float64, offer *Meter, metrics []float64) float64 {
-		eff, dur := predict(metrics[0], metrics[1], metrics[2], metrics[3], offer.Surplus)
+	return func(amountNeeded float64, offer *Meter, metrics *GridState) float64 {
+		eff, dur := predict(metrics, offer.Surplus)
 
 		quality := (offer.Surplus - amountNeeded) / (dur + 1e-6)
 
@@ -135,8 +135,7 @@ func MkFitnessFunction(effPath string, durPath string, weights []float64) func(f
 	}
 }
 
-type FitnessFunc func(amountNeeded float64, offer *Meter, metrics []float64) float64
-type BestOffersFunc func(amountNeeded float64, offers []*Meter, metrics []float64, count int) []ScoredOffer
+type BestOffersFunc func(amountNeeded float64, offers []*Meter, metrics *GridState, count int) []ScoredOffer
 
 func MkChooseBestOffersFunction(
 	effPath, durPath, qualPath string,
@@ -145,7 +144,7 @@ func MkChooseBestOffersFunction(
 
 	fitness := MkFitnessFunction(effPath, durPath, weights)
 
-	return func(amountNeeded float64, offers []*Meter, metrics []float64, count int) []ScoredOffer {
+	return func(amountNeeded float64, offers []*Meter, metrics *GridState, count int) []ScoredOffer {
 		scoredOffers := make([]ScoredOffer, len(offers))
 		for i, offer := range offers {
 			scoredOffers[i] = ScoredOffer{

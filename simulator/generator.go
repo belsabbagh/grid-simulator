@@ -26,7 +26,6 @@ func PrepareGenerationLookup(start time.Time, end time.Time, increment time.Dura
 			elapsed := t.Sub(st["sunrise"].Value).Seconds()
 			intensity := math.Sin(math.Pi * (elapsed / totalDaylight))
 			power = intensity
-
 		}
 		gen[t] = power
 	}
@@ -81,24 +80,34 @@ func MkInstanceGenerator(start, end time.Time, increment time.Duration, deviatio
 		return GenerateRandom(t, genData, deviation), GenerateRandom(t, conData, deviation)
 	}
 }
+func NormalRandom(mean float64, stddev float64) float64 {
+	return (rand.NormFloat64() * stddev) + mean
+}
 
-type GridStateGenerator func(t time.Time) []float64
+type GridState struct {
+	Load      float64 `json:"load"`
+	Temp      float64 `json:"temperature"`
+	Voltage   float64 `json:"voltage"`
+	Intensity float64 `json:"intensity"`
+}
+
+func (gs *GridState) ToArray() []float64 {
+	return []float64{gs.Load, gs.Temp, gs.Voltage, gs.Intensity}
+}
+
+type GridStateGenerator func(t time.Time) *GridState
 
 func MkGridStateGenerator() GridStateGenerator {
 	// means and devs for: [load, temperature, voltage, intensity]
 	means := []float64{0.4, 20, 239.696, 3.132}
 	devs := []float64{0.1, 1, 1, 0.1}
 
-	return func(_t time.Time) []float64 {
-		results := make([]float64, len(means))
-
-		for i := range means {
-			// rand.NormFloat64 returns a normal distribution with:
-			// mean = 0, stddev = 1.
-			// To adjust: (StandardNormal * dev) + mean
-			results[i] = (rand.NormFloat64() * devs[i]) + means[i]
+	return func(_t time.Time) *GridState {
+		return &GridState{
+			Load:      NormalRandom(means[0], devs[0]),
+			Temp:      NormalRandom(means[1], devs[1]),
+			Voltage:   NormalRandom(means[2], devs[2]),
+			Intensity: NormalRandom(means[3], devs[3]),
 		}
-
-		return results
 	}
 }

@@ -23,12 +23,12 @@ func NewTrader() *Trader {
 	}
 }
 
-func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState []float64, limit int) []ScoredOffer {
+func (t *Trader) ScoreOffers(m *Meter, offers []*Meter, gridState *GridState, limit int) []ScoredOffer {
 	choices := t.tradeChooser(m.Surplus, offers, gridState, limit)
 	return choices
 }
 
-func (t *Trader) CollectRequests(meters map[string]*Meter, gridState []float64) map[*Meter][]*TradeRequest {
+func (t *Trader) CollectRequests(meters map[string]*Meter, gridState *GridState) map[*Meter][]*TradeRequest {
 	requests := make(map[*Meter][]*TradeRequest)
 
 	var offers []*Meter
@@ -53,7 +53,7 @@ func (t *Trader) CollectRequests(meters map[string]*Meter, gridState []float64) 
 	return requests
 }
 
-func (t *Trader) ExecuteTrades(requests map[*Meter][]*TradeRequest, meters map[string]*Meter, gridState []float64, duration time.Duration) error {
+func (t *Trader) ExecuteTrades(requests map[*Meter][]*TradeRequest, meters map[string]*Meter, gridState *GridState, duration time.Duration) error {
 	for seller, tradeRequests := range requests {
 		sort.Slice(tradeRequests, func(i, j int) bool {
 			return tradeRequests[i].Score > tradeRequests[j].Score
@@ -62,7 +62,7 @@ func (t *Trader) ExecuteTrades(requests map[*Meter][]*TradeRequest, meters map[s
 		seller.ParticipationCount++
 		buyer.Trade = fmt.Sprintf("Buying:%s", seller.ID)
 		seller.Trade = fmt.Sprintf("Selling:%s", buyer.ID)
-		gridLimit := gridState[len(gridState)-1] * gridState[len(gridState)-2] * duration.Seconds()
+		gridLimit := gridState.Intensity * gridState.Voltage * duration.Seconds()
 		transferAmount := math.Min(
 			math.Min(seller.Surplus, gridLimit),
 			math.Abs(buyer.Surplus),
